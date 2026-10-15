@@ -73,7 +73,7 @@ body{margin:0}
         <div class="date" id="dayLabel"></div>
         <button type="button" id="dayNext" aria-label="Noche siguiente">›</button>
       </div>
-      <div class="chips" id="clubChips" role="group" aria-label="Discoteca"></div>
+      <select class="in" id="clubSel" aria-label="Discoteca"></select>
       <div class="sumbar" id="sumBar"></div>
 
       <form class="card addcard" id="addForm" autocomplete="off">
@@ -98,16 +98,25 @@ body{margin:0}
 
       <div id="listOut" class="stack"></div>
     </section>
+
+    <!-- PESTAÑA 3: DISCOTECAS -->
+    <section id="view-clubs" class="stack" role="tabpanel" aria-labelledby="tab-clubs" hidden>
+      <div class="sub">Lo que te paga cada sala. Al apuntar gente en Listas solo eliges la discoteca y el resto se calcula solo.</div>
+      <div id="clubsOut" class="stack"></div>
+    </section>
   </main>
 </div>
 
 <nav class="tabs" role="tablist" aria-label="Secciones">
-  <div class="tabs-in">
+  <div class="tabs-in" style="grid-template-columns:repeat(3,1fr)">
     <button class="tab" role="tab" id="tab-dash" data-tab="dash" aria-selected="true" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Dashboard
     </button>
     <button class="tab" role="tab" id="tab-lists" data-tab="lists" aria-selected="false" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Listas
+    </button>
+    <button class="tab" role="tab" id="tab-clubs" data-tab="clubs" aria-selected="false" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/></svg>Discotecas
     </button>
   </div>
 </nav>

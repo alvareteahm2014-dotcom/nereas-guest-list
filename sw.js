@@ -1,6 +1,6 @@
 /* Service worker: la app funciona sin conexión.
    Sube VERSION cada vez que cambie index.html para que los móviles se actualicen. */
-var VERSION = 'v2';
+var VERSION = 'v3';
 var SHELL = 'guestlist-shell-' + VERSION;
 var FONTS = 'guestlist-fonts';
 var FILES = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];

@@ -24,7 +24,7 @@ var S=null, storageOk=true;
 function migrate(o){
   if(!o||!Array.isArray(o.clubs)||!Array.isArray(o.entries))return null;
   o.v=2;o.profiles=o.profiles||{};
-  o.clubs.forEach(function(c){c.bonusEvery=+c.bonusEvery||0;c.bonusAmount=+c.bonusAmount||0});
+  o.clubs.forEach(function(c){c.bonusEvery=+c.bonusEvery||0;c.bonusAmount=+c.bonusAmount||0;c.pctMesa=+c.pctMesa||0;c.rateLista=+c.rateLista||0;delete c.rateMesa});
   o.entries.forEach(function(e){
     if(typeof e.n!=='number'){
       var comp=Array.isArray(e.comp)?e.comp:[];
@@ -54,11 +54,16 @@ function restoreSnap(s){S=migrate(JSON.parse(s));save();renderAll()}
 function club(id){return S.clubs.filter(function(c){return c.id===id})[0]}
 function heads(e){return e.n||1}
 function hasSplit(e){return (e.m||0)+(e.f||0)===e.n&&e.n>0}
-function rate(c,t){return c?(+(t==='mesa'?c.rateMesa:c.rateLista)||0):0}
+function rate(c){return c?(+c.rateLista||0):0}
 function hasNum(v){return v!=null&&v!==''&&!isNaN(+v)}
-function amt(e){return hasNum(e.amount)?+e.amount:rate(club(e.clubId),e.type)*heads(e)}
+function amt(e){
+  if(hasNum(e.amount))return +e.amount;
+  var c=club(e.clubId);
+  if(e.type==='mesa')return c?(+c.pctMesa||0)/100*(hasNum(e.spend)?+e.spend:0):0;
+  return rate(c)*heads(e);
+}
 function pay(e){return e.type==='pago'?(hasNum(e.payout)?+e.payout:amt(e)):0}
-function eur(n){return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:0,maximumFractionDigits:2}).format(n||0)}
+function eur(n){n=n||0;var a=Math.abs(n),fr=Math.abs(a-Math.round(a))>0.004;return (n<0?'\u2212':'')+'\u00a3'+new Intl.NumberFormat('en-GB',{minimumFractionDigits:fr?2:0,maximumFractionDigits:2}).format(a)}
 function pkey(n){return norm(n)}
 function profileOf(name){return S.profiles[pkey(name)]}
 function visits(name){var k=pkey(name);return S.entries.filter(function(e){return pkey(e.name)===k}).length}
@@ -112,14 +117,14 @@ function bonusMap(){
 function demoData(){
   var n=nightDate();
   var d={v:2,clubs:[
-    {id:'c1',name:'Sala Eclipse',rateLista:6,rateMesa:10,bonusEvery:15,bonusAmount:30,demo:true},
-    {id:'c2',name:'Nox Madrid',rateLista:5,rateMesa:8,bonusEvery:0,bonusAmount:0,demo:true}
+    {id:'c1',name:'Sala Eclipse',rateLista:6,pctMesa:12,bonusEvery:15,bonusAmount:30,demo:true},
+    {id:'c2',name:'Nox Club',rateLista:5,pctMesa:10,bonusEvery:0,bonusAmount:0,demo:true}
   ],entries:[],profiles:{}};
   S=d;
   function add(off,clubId,text,type,entered,promoter,desc){
     var q=parseQuick(text);
     d.entries.push({id:'d'+d.entries.length,date:addDays(n,off),clubId:clubId,name:q.name,type:type,n:q.n,m:q.m,f:q.f,names:[],
-      entered:entered,amount:null,promoter:promoter||'',payout:null,paid:false,demo:true,ts:d.entries.length});
+      entered:entered,amount:null,spend:type==='mesa'?300+(d.entries.length*53)%400:null,promoter:promoter||'',payout:null,paid:false,demo:true,ts:d.entries.length});
     if(!profileOf(q.name))upsertProfile(q.name,{clubId:clubId,type:type,n:q.n,m:q.m,f:q.f,desc:desc||'',demo:true});
   }
   add(0,'c1','Lucía Ramos 6+3','lista',true,'','@lucia.ramos · chaqueta vaquera');
@@ -150,7 +155,7 @@ function clearDemo(){
     else delete p.demo;
   });
   save();renderAll();
-  toast('Ejemplos borrados. Añade tu primera discoteca en Ajustes.',function(){restoreSnap(before)});
+  toast('Ejemplos borrados. Añade tu primera discoteca en la pestaña Discotecas.',function(){restoreSnap(before)});
 }
 
 /* ---------- aviso flotante ---------- */
@@ -284,7 +289,7 @@ function renderDash(){
   renderMonths();
   var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'),out=$('#dashOut');
   if(!S.clubs.length){
-    out.innerHTML='<div class="card empty"><b>Aún no hay discotecas</b>Añade la primera en Ajustes para empezar a apuntar guests.</div>';return;
+    out.innerHTML='<div class="card empty"><b>Aún no hay discotecas</b>Añade la primera en la pestaña Discotecas para empezar a apuntar guests.</div>';return;
   }
   if(!list.length){
     out.innerHTML='<div class="card empty"><b>Nada que mostrar</b>No hay guests con estos filtros. Prueba otro periodo o apunta gente en la pestaña Listas.</div>';return;
@@ -471,11 +476,11 @@ function renderLists(){
   var today=nightDate();
   $('#dayLabel').innerHTML=esc(fmtLong(LV.date))+(LV.date===today?'<small>Esta noche</small>':'');
   $('#dayNext').disabled=false;
-  $('#clubChips').innerHTML=S.clubs.map(function(c){return '<button class="chip" type="button" data-club="'+esc(c.id)+'" aria-pressed="'+(c.id===LV.club)+'">'+esc(c.name)+'</button>'}).join('');
+  var sel=$('#clubSel');sel.innerHTML=S.clubs.map(function(c){return '<option value="'+esc(c.id)+'"'+(c.id===LV.club?' selected':'')+'>'+esc(c.name)+'</option>'}).join('');sel.disabled=!S.clubs.length;
   var out=$('#listOut'),sum=$('#sumBar');
   if(!S.clubs.length){
     sum.innerHTML='';
-    out.innerHTML='<div class="card empty"><b>Primero añade una discoteca</b>Abre Ajustes arriba a la derecha y crea la primera.</div>';
+    out.innerHTML='<div class="card empty"><b>Primero añade una discoteca</b>Ve a la pestaña Discotecas y crea la primera.</div>';
     return;
   }
   var list=dayEntries(),c=club(LV.club);
@@ -524,10 +529,12 @@ function editPanel(e){
     +'<label class="f" for="e-desc">Descripción / Instagram<textarea class="in" id="e-desc" rows="2">'+esc(pr.desc||'')+'</textarea></label>';
   if(e.type==='pago'){
     h+='<label class="f" for="e-prom">Promotor que lo envía<input class="in" id="e-prom" list="promoters" type="text" value="'+esc(e.promoter||'')+'"></label>'
-      +'<label class="f" for="e-payout">A pagarle (€, vacío = lo que paga la sala)<input class="in num" id="e-payout" type="number" inputmode="decimal" min="0" step="0.5" value="'+esc(hasNum(e.payout)?e.payout:'')+'"></label>'
+      +'<label class="f" for="e-payout">A pagarle (£, vacío = lo que paga la sala)<input class="in num" id="e-payout" type="number" inputmode="decimal" min="0" step="0.5" value="'+esc(hasNum(e.payout)?e.payout:'')+'"></label>'
       +'<label style="display:flex;gap:10px;align-items:center;min-height:44px"><input type="checkbox" id="e-paid"'+(e.paid?' checked':'')+'> Ya le he pagado</label>';
   }
-  h+='<label class="f" for="e-amount">Importe de la sala (€, vacío = tarifa × personas)<input class="in num" id="e-amount" type="number" inputmode="decimal" min="0" step="0.5" value="'+esc(hasNum(e.amount)?e.amount:'')+'"></label>'
+  if(e.type==='mesa'){var cl=club(e.clubId),pc=cl?(+cl.pctMesa||0):0;
+    h+='<label class="f" for="e-spend">Consumo de la mesa (£) · comisión '+pc+'%'+(hasNum(e.spend)?' = '+esc(eur(pc/100*(+e.spend))):'')+'<input class="in num" id="e-spend" type="number" inputmode="decimal" min="0" step="1" value="'+esc(hasNum(e.spend)?e.spend:'')+'"></label>'}
+  h+=''
     +'<div class="actions"><div style="display:flex;gap:8px"><button class="btn" type="button" data-act="save" data-id="'+id+'">Guardar</button><button class="btn ghost" type="button" data-act="cancel">Cancelar</button></div>'
     +(LV.confirmDel===e.id?'<button class="btn danger" type="button" data-act="del2" data-id="'+id+'">Sí, borrar</button>':'<button class="btn ghost" type="button" data-act="del" data-id="'+id+'">Borrar</button>')
     +'</div></div>';
@@ -545,7 +552,7 @@ function saveEdit(id){
   e.name=name;e.clubId=$('#e-club').value;e.type=$('#e-type').value;
   e.n=q.n;e.m=q.m;e.f=q.f;
   e.names=$('#e-names').value.split(/[,\n]/).map(function(s){return s.trim()}).filter(Boolean);
-  var am=$('#e-amount').value;e.amount=am===''?null:+am;
+  var sp=$('#e-spend')?$('#e-spend').value:'';e.amount=null;if($('#e-spend'))e.spend=sp===''?null:+sp;
   if(e.type==='pago'){
     e.promoter=($('#e-prom')?$('#e-prom').value.trim():e.promoter)||'';
     var po=$('#e-payout')?$('#e-payout').value:'';e.payout=po===''?null:+po;
@@ -588,10 +595,7 @@ function bindLists(){
   $('#dayPrev').onclick=function(){LV.date=addDays(LV.date,-1);LV.edit=null;renderLists()};
   $('#dayNext').onclick=function(){LV.date=addDays(LV.date,1);LV.edit=null;renderLists()};
   $('#dayLabel').onclick=function(){LV.date=nightDate();LV.edit=null;renderLists()};
-  $('#clubChips').addEventListener('click',function(ev){
-    var b=ev.target.closest('[data-club]');if(!b)return;
-    LV.club=b.dataset.club;LV.edit=null;renderLists();
-  });
+  $('#clubSel').addEventListener('change',function(){LV.club=this.value;LV.edit=null;renderLists()});
   $$('input[name="f-type"]').forEach(function(r){r.addEventListener('change',function(){LV.type=r.value;renderForm();renderHint()})});
   $('#f-name').addEventListener('input',function(){renderHint();renderSugg()});
   $('#f-name').addEventListener('blur',function(){setTimeout(function(){$('#sugg').hidden=true},180)});
@@ -629,22 +633,8 @@ function renderSheet(){
   var root=$('#sheetRoot');
   if(!SH.open){root.innerHTML='';return}
   var h='<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT">'
-    +'<div class="row-between"><h2 id="sheetT">Ajustes</h2><button class="btn ghost small" type="button" data-sa="close" id="sheetClose">Cerrar</button></div>'
-    +'<h2 style="margin:18px 0 0;font-size:15px">Discotecas y tarifas</h2>'
-    +'<p class="sub" style="margin:4px 0 0">Lo que paga cada sala por persona que entra. El bonus se calcula por discoteca y por noche: cada X personas dentro, un extra.</p>';
-  S.clubs.forEach(function(c){
-    var id=esc(c.id),n=S.entries.filter(function(e){return e.clubId===c.id}).length;
-    h+='<div class="club-edit">'
-      +'<label class="f name" for="cn-'+id+'">Nombre<input class="in" id="cn-'+id+'" type="text" data-cid="'+id+'" data-cf="name" value="'+esc(c.name)+'"></label>'
-      +'<label class="f" for="cl-'+id+'">Lista (€/persona)<input class="in num" id="cl-'+id+'" type="number" inputmode="decimal" min="0" step="0.5" data-cid="'+id+'" data-cf="rateLista" value="'+esc(c.rateLista)+'"></label>'
-      +'<label class="f" for="cm-'+id+'">Mesa (€/persona)<input class="in num" id="cm-'+id+'" type="number" inputmode="decimal" min="0" step="0.5" data-cid="'+id+'" data-cf="rateMesa" value="'+esc(c.rateMesa)+'"></label>'
-      +'<label class="f" for="cb-'+id+'">Bonus cada X personas<input class="in num" id="cb-'+id+'" type="number" inputmode="numeric" min="0" step="1" data-cid="'+id+'" data-cf="bonusEvery" value="'+esc(c.bonusEvery||0)+'"></label>'
-      +'<label class="f" for="ca-'+id+'">Bonus (\u20ac)<input class="in num" id="ca-'+id+'" type="number" inputmode="decimal" min="0" step="0.5" data-cid="'+id+'" data-cf="bonusAmount" value="'+esc(c.bonusAmount||0)+'"></label>'
-      +'<div class="rm"><span class="sub">'+n+(n===1?' guest apuntado':' guests apuntados')+' en total</span>'
-      +(SH.confirm===c.id?'<button class="btn danger small" type="button" data-sa="cdel2" data-cid="'+id+'">Sí, eliminar</button>':'<button class="btn ghost small" type="button" data-sa="cdel" data-cid="'+id+'">Eliminar</button>')
-      +'</div></div>';
-  });
-  h+='<button class="btn ghost" type="button" data-sa="cadd" style="width:100%;margin-top:6px">Añadir discoteca</button>'
+    +'<div class="row-between"><h2 id="sheetT">Ajustes</h2><button class="btn ghost small" type="button" data-sa="close" id="sheetClose">Cerrar</button></div>';
+  h+=''
     +'<h2 style="margin:24px 0 0;font-size:15px">Copia de seguridad</h2>'
     +'<p class="sub" style="margin:4px 0 0">Los datos se guardan en este navegador. Descarga una copia de vez en cuando por si cambias de móvil o borras los datos del navegador.</p>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
@@ -697,35 +687,64 @@ function restoreFile(file){
   rd.readAsText(file);
 }
 
+/* ---------- pestaña Discotecas ---------- */
+function renderClubs(){
+  var out=$('#clubsOut');if(!out)return;
+  var h='';
+  if(!S.clubs.length)h+='<div class="card empty"><b>Aún no hay discotecas</b>Añade la primera: lo que te pagan por persona de lista, el % de las mesas y el bonus.</div>';
+  S.clubs.forEach(function(c){
+    var id=esc(c.id),n=S.entries.filter(function(e){return e.clubId===c.id}).length;
+    h+='<div class="card"><div class="club-edit" style="border-top:0;padding:0">'
+      +'<label class="f name" for="cn-'+id+'">Nombre de la discoteca<input class="in" id="cn-'+id+'" type="text" data-cid="'+id+'" data-cf="name" value="'+esc(c.name)+'"></label>'
+      +'<label class="f" for="cl-'+id+'">Lista (£ por persona)<input class="in num" id="cl-'+id+'" type="number" inputmode="decimal" min="0" step="0.5" data-cid="'+id+'" data-cf="rateLista" value="'+esc(c.rateLista||0)+'"></label>'
+      +'<label class="f" for="cm-'+id+'">Mesa (% del consumo)<input class="in num" id="cm-'+id+'" type="number" inputmode="decimal" min="0" max="100" step="0.5" data-cid="'+id+'" data-cf="pctMesa" value="'+esc(c.pctMesa||0)+'"></label>'
+      +'<label class="f" for="cb-'+id+'">Bonus cada X personas<input class="in num" id="cb-'+id+'" type="number" inputmode="numeric" min="0" step="1" data-cid="'+id+'" data-cf="bonusEvery" value="'+esc(c.bonusEvery||0)+'"></label>'
+      +'<label class="f" for="ca-'+id+'">Bonus (£)<input class="in num" id="ca-'+id+'" type="number" inputmode="decimal" min="0" step="0.5" data-cid="'+id+'" data-cf="bonusAmount" value="'+esc(c.bonusAmount||0)+'"></label>'
+      +'<div class="rm"><span class="sub">'+plural(n,'guest apuntado','guests apuntados')+'</span>'
+      +(SH.confirm===c.id?'<button class="btn danger small" type="button" data-ca="cdel2" data-cid="'+id+'">Sí, eliminar</button>':'<button class="btn ghost small" type="button" data-ca="cdel" data-cid="'+id+'">Eliminar</button>')
+      +'</div></div></div>';
+  });
+  h+='<button class="btn" type="button" data-ca="cadd" style="width:100%">Añadir discoteca</button>';
+  out.innerHTML=h;
+}
+function bindClubs(){
+  $('#clubsOut').addEventListener('click',function(ev){
+    var b=ev.target.closest('[data-ca]');if(!b)return;
+    var a=b.dataset.ca,id=b.dataset.cid;
+    if(a==='cadd'){
+      var nc={id:uid(),name:'Nueva discoteca',rateLista:0,pctMesa:0,bonusEvery:0,bonusAmount:0};S.clubs.push(nc);save();renderClubs();
+      var inp=document.getElementById('cn-'+nc.id);if(inp){inp.focus();inp.select()}
+    }
+    else if(a==='cdel'){SH.confirm=id;renderClubs()}
+    else if(a==='cdel2'){
+      var used=S.entries.filter(function(e){return e.clubId===id}).length;
+      if(used){SH.confirm=null;renderClubs();toast('Esa discoteca tiene '+used+' guests apuntados. Elimínalos primero.');return}
+      var before=snap();S.clubs=S.clubs.filter(function(c){return c.id!==id});SH.confirm=null;save();renderClubs();
+      toast('Discoteca eliminada.',function(){restoreSnap(before)});
+    }
+  });
+  $('#clubsOut').addEventListener('change',function(ev){
+    var t=ev.target,f=t.dataset&&t.dataset.cf;if(!f)return;
+    var c=club(t.dataset.cid);if(!c)return;
+    if(f==='name'){c.name=t.value.trim()||'Sin nombre';t.value=c.name}
+    else{var v=parseFloat(t.value);c[f]=isNaN(v)||v<0?0:v;t.value=c[f]}
+    delete c.demo;save();
+  });
+}
+
 function bindShell(){
   $('#btnClubs').onclick=openSheet;
   $('#sheetRoot').addEventListener('click',function(ev){
     if(ev.target.id==='scrim'){closeSheet();return}
     var b=ev.target.closest('[data-sa]');if(!b)return;
-    var a=b.dataset.sa,id=b.dataset.cid;
+    var a=b.dataset.sa;
     if(a==='close')closeSheet();
-    else if(a==='cadd'){
-      var nc={id:uid(),name:'Nueva discoteca',rateLista:0,rateMesa:0,bonusEvery:0,bonusAmount:0};S.clubs.push(nc);save();renderSheet();
-      var inp=document.getElementById('cn-'+nc.id);if(inp){inp.focus();inp.select()}
-    }
-    else if(a==='cdel'){SH.confirm=id;renderSheet()}
-    else if(a==='cdel2'){
-      var used=S.entries.filter(function(e){return e.clubId===id}).length;
-      if(used){SH.confirm=null;renderSheet();toast('Esa discoteca tiene '+used+' guests apuntados. Elimínalos primero.');return}
-      var before=snap();S.clubs=S.clubs.filter(function(c){return c.id!==id});SH.confirm=null;save();renderSheet();
-      toast('Discoteca eliminada.',function(){restoreSnap(before);renderSheet()});
-    }
     else if(a==='backup')backup();
     else if(a==='cleardemo'){SH.open=false;renderSheet();clearDemo()}
   });
   $('#sheetRoot').addEventListener('change',function(ev){
     var t=ev.target;
     if(t.id==='restoreFile'){restoreFile(t.files&&t.files[0]);t.value='';return}
-    var f=t.dataset&&t.dataset.cf;if(!f)return;
-    var c=club(t.dataset.cid);if(!c)return;
-    if(f==='name'){c.name=t.value.trim()||'Sin nombre';t.value=c.name}
-    else{var v=parseFloat(t.value);c[f]=isNaN(v)||v<0?0:v;t.value=c[f]}
-    delete c.demo;save();
   });
   document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&SH.open)closeSheet()});
 
@@ -747,26 +766,27 @@ function renderBanners(){
 
 var TAB='dash';
 function setTab(name){
-  TAB=name==='lists'?'lists':'dash';
+  TAB=name==='lists'||name==='clubs'?name:'dash';
   $('#view-dash').hidden=TAB!=='dash';
   $('#view-lists').hidden=TAB!=='lists';
+  $('#view-clubs').hidden=TAB!=='clubs';
   $$('.tab').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.tab===TAB))});
   try{localStorage.setItem('nereas-guest-list.tab',TAB)}catch(e){}
-  if(TAB==='dash')renderDash();else renderLists();
+  if(TAB==='dash')renderDash();else if(TAB==='lists')renderLists();else renderClubs();
 }
 function renderAll(){
   renderBanners();
   $('#sub').textContent=fmtLong(nightDate());
   renderDashFilters();renderForm();
-  if(TAB==='dash')renderDash();else renderLists();
+  if(TAB==='dash')renderDash();else if(TAB==='lists')renderLists();else renderClubs();
 }
 
 /* ---------- arranque ---------- */
 try{localStorage.setItem('nereas-guest-list.probe','1');localStorage.removeItem('nereas-guest-list.probe')}catch(e){storageOk=false}
 S=load()||demoData();
 save();
-bindDash();bindLists();bindShell();
-try{TAB=localStorage.getItem('nereas-guest-list.tab')==='lists'?'lists':'dash'}catch(e){}
+bindDash();bindLists();bindClubs();bindShell();
+try{var tb=localStorage.getItem('nereas-guest-list.tab');TAB=tb==='lists'||tb==='clubs'?tb:'dash'}catch(e){}
 renderAll();
 setTab(TAB);
 try{
