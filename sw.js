@@ -1,9 +1,9 @@
 /* Service worker: la app funciona sin conexión.
    Sube VERSION cada vez que cambie index.html para que los móviles se actualicen. */
-var VERSION = 'v1';
+var VERSION = 'v2';
 var SHELL = 'guestlist-shell-' + VERSION;
 var FONTS = 'guestlist-fonts';
-var FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+var FILES = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(SHELL).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); }));
