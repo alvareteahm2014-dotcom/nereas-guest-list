@@ -58,6 +58,7 @@ function rate(c){return c?(+c.rateLista||0):0}
 function hasNum(v){return v!=null&&v!==''&&!isNaN(+v)}
 function amt(e){
   var x=hasNum(e.extra)?+e.extra:0;
+  if(x>0&&String(e.name).trim().toLowerCase()==='host')return x;
   if(hasNum(e.amount))return +e.amount+x;
   var c=club(e.clubId);
   if(e.type==='mesa')return (c?(+c.pctMesa||0)/100*(hasNum(e.spend)?+e.spend:0):0)+x;
