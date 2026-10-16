@@ -247,7 +247,7 @@ function topLists(){
 function topCard(title,sub,rows,kind){
   var h='<div class="card"><h2>'+title+'</h2><div class="sub">'+sub+'</div>';
   if(!rows.length)return h+'<div class="empty" style="padding:18px 8px">Sin datos en este periodo.</div></div>';
-  h+='<ol class="top">';
+  h+='<ol class="toplist">';
   rows.forEach(function(x,i){
     var line=kind==='g'?plural(x.visits,'visita','visitas')+(x.visits>1?' · repite':'')
       :plural(x.visits,'mesa','mesas')+' · '+plural(x.people,'persona','personas')+(x.spend>0?' · consumo '+eur(x.spend):'');
