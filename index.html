@@ -36,14 +36,19 @@ body{margin:0}
   <main>
     <!-- PESTAÑA 1: DASHBOARD -->
     <section id="view-dash" class="stack" role="tabpanel" aria-labelledby="tab-dash">
-      <div class="card" id="monthsCard"></div>
       <div class="card stack" style="gap:12px">
         <div class="chips" id="periodChips" role="group" aria-label="Periodo">
-          <button class="chip" type="button" data-p="hoy" aria-pressed="false">Esta noche</button>
-          <button class="chip" type="button" data-p="7d" aria-pressed="true">7 días</button>
-          <button class="chip" type="button" data-p="mes" aria-pressed="false">Este mes</button>
+          <button class="chip" type="button" data-p="hoy" aria-pressed="false">Noche</button>
+          <button class="chip" type="button" data-p="sem" aria-pressed="true">Semana</button>
+          <button class="chip" type="button" data-p="mes" aria-pressed="false">Mes</button>
+          <button class="chip" type="button" data-p="anio" aria-pressed="false">Año</button>
           <button class="chip" type="button" data-p="todo" aria-pressed="false">Todo</button>
           <button class="chip" type="button" data-p="rango" aria-pressed="false">Rango</button>
+        </div>
+        <div class="daynav" id="periodNav">
+          <button type="button" id="pPrev" aria-label="Periodo anterior">‹</button>
+          <div class="date" id="pLabel"></div>
+          <button type="button" id="pNext" aria-label="Periodo siguiente">›</button>
         </div>
         <div class="grid2" id="rangeRow" hidden>
           <label class="f" for="d-from">Desde<input class="in" type="date" id="d-from"></label>
@@ -82,14 +87,21 @@ body{margin:0}
           <input type="radio" name="f-type" id="t-mesa" value="mesa"><label for="t-mesa">⭐ Mesa</label>
           <input type="radio" name="f-type" id="t-pago" value="pago"><label for="t-pago"><span class="dot pago"></span>PAGO</label>
         </div>
-        <div class="addline">
-          <div class="rel">
-            <input class="in" id="f-name" type="text" placeholder="Nombre  6+3" autocapitalize="words" aria-label="Nombre y personas, por ejemplo Quique 6+3">
-            <div class="sugg" id="sugg" hidden></div>
-          </div>
+        <div class="rel">
+          <input class="in" id="f-name" type="text" placeholder="Nombre del guest" autocapitalize="words" aria-label="Nombre del guest">
+          <div class="sugg" id="sugg" hidden></div>
+        </div>
+        <div class="addline2">
+          <label class="f cnt f-g" for="f-f"><span>Chicas</span><input class="in num" id="f-f" type="number" inputmode="numeric" min="0" value="0"></label>
+          <label class="f cnt f-b" for="f-m"><span>Chicos</span><input class="in num" id="f-m" type="number" inputmode="numeric" min="0" value="0"></label>
           <button class="btn" type="submit" id="btnAdd">Añadir</button>
         </div>
-        <div class="hint" id="hint">Nombre y número de personas. <b>6+3</b> = 6 chicos + 3 chicas.</div>
+        <div class="hosts" role="group" aria-label="Host con extra">
+          <button class="hostbtn" type="button" data-host="200">Host 200</button>
+          <button class="hostbtn" type="button" data-host="250">Host 250</button>
+          <button class="hostbtn" type="button" data-host="300">Host 300</button>
+        </div>
+        <div class="hint" id="hint"></div>
         <div id="f-pago" hidden>
           <input class="in" id="f-promoter" list="promoters" type="text" placeholder="Promotor que lo envía" aria-label="Promotor que lo envía">
           <datalist id="promoters"></datalist>
@@ -122,6 +134,7 @@ body{margin:0}
 </nav>
 
 <div id="sheetRoot"></div>
+<div id="calRoot"></div>
 <div id="toastRoot"></div>
 <div class="tip" id="tip" hidden></div>
 <script src="app.js"></script>

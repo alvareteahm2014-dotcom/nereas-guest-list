@@ -57,13 +57,14 @@ function hasSplit(e){return (e.m||0)+(e.f||0)===e.n&&e.n>0}
 function rate(c){return c?(+c.rateLista||0):0}
 function hasNum(v){return v!=null&&v!==''&&!isNaN(+v)}
 function amt(e){
-  if(hasNum(e.amount))return +e.amount;
+  var x=hasNum(e.extra)?+e.extra:0;
+  if(hasNum(e.amount))return +e.amount+x;
   var c=club(e.clubId);
-  if(e.type==='mesa')return c?(+c.pctMesa||0)/100*(hasNum(e.spend)?+e.spend:0):0;
-  return rate(c)*heads(e);
+  if(e.type==='mesa')return (c?(+c.pctMesa||0)/100*(hasNum(e.spend)?+e.spend:0):0)+x;
+  return rate(c)*heads(e)+x;
 }
 function pay(e){return e.type==='pago'?(hasNum(e.payout)?+e.payout:amt(e)):0}
-function eur(n){n=n||0;var a=Math.abs(n),fr=Math.abs(a-Math.round(a))>0.004;return (n<0?'\u2212':'')+'\u00a3'+new Intl.NumberFormat('en-GB',{minimumFractionDigits:fr?2:0,maximumFractionDigits:2}).format(a)}
+function eur(n){n=n||0;var a=Math.abs(n),fr=Math.abs(a-Math.round(a))>0.004;return (n<0?'−':'')+'£'+new Intl.NumberFormat('en-GB',{minimumFractionDigits:fr?2:0,maximumFractionDigits:2}).format(a)}
 function pkey(n){return norm(n)}
 function profileOf(name){return S.profiles[pkey(name)]}
 function visits(name){var k=pkey(name);return S.entries.filter(function(e){return pkey(e.name)===k}).length}
@@ -84,6 +85,13 @@ function parseQuick(text){
   return {name:name,n:n,m:a,f:b,mesa:mesa};
 }
 function countText(n,m,f){return (m||f)&&m+f===n?m+'+'+f:String(n)}
+function splitText(n,m,f){
+  if((m||f)&&m+f===n){var a=[];if(f)a.push(f+(f===1?' chica':' chicas'));if(m)a.push(m+(m===1?' chico':' chicos'));return a.join(' · ')}
+  return plural(n,'persona','personas');
+}
+function weekOfMonth(s){var d=parse(s),off=(new Date(d.getFullYear(),d.getMonth(),1).getDay()+6)%7;return Math.floor((d.getDate()-1+off)/7)+1}
+var MES3=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function rangeLabel(a,b){var A=parse(a),B=parse(b);return A.getDate()+(A.getMonth()!==B.getMonth()?' '+MES3[A.getMonth()]:'')+' – '+B.getDate()+' '+MES3[B.getMonth()]}
 function peopleText(n,m,f){
   if((m||f)&&m+f===n)return plural(n,'persona','personas')+' ('+plural(m,'chico','chicos')+' + '+plural(f,'chica','chicas')+')';
   return plural(n,'persona','personas');
@@ -169,23 +177,24 @@ function toast(msg,undo){
 }
 
 /* ---------- estado de vistas ---------- */
-var LV={date:nightDate(),club:'',type:'lista',confirmDel:null};
-var DV={period:'7d',club:'all',type:'all',status:'all',from:'',to:'',openMonth:null,moreMonths:false};
+var LV={date:nightDate(),club:'',type:'lista',confirmDel:null,edit:null};
+var DV={period:'sem',off:0,club:'all',type:'all',status:'all',from:'',to:'',openMonth:null,moreMonths:false};
 var ICON_CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
 /* =========================== DASHBOARD =========================== */
-function dRange(){
-  var t=nightDate();
-  if(DV.period==='hoy')return [t,t];
-  if(DV.period==='7d')return [addDays(t,-6),t];
-  if(DV.period==='mes'){var d=parse(t);return [iso(new Date(d.getFullYear(),d.getMonth(),1)),t]}
-  if(DV.period==='rango')return [DV.from||'0000-00-00',DV.to||'9999-99-99'];
-  return ['0000-00-00','9999-99-99'];
+function nightsRange(){
+  var t=nightDate(),o=DV.off||0,P=DV.period;
+  if(P==='hoy'){var d=addDays(t,o);return {a:d,b:d,label:fmtLong(d)}}
+  if(P==='sem'){var m=weekStart(addDays(t,7*o)),e=addDays(m,6);return {a:m,b:e,label:(o===0?'Esta semana · ':'Semana ')+rangeLabel(m,e)}}
+  if(P==='mes'){var p=parse(t),f=new Date(p.getFullYear(),p.getMonth()+o,1),l=new Date(f.getFullYear(),f.getMonth()+1,0);return {a:iso(f),b:iso(l),label:monthName(iso(f).slice(0,7))}}
+  if(P==='anio'){var y=parse(t).getFullYear()+o;return {a:y+'-01-01',b:y+'-12-31',label:'Año '+y}}
+  if(P==='rango')return {a:DV.from||'0000-00-00',b:DV.to||'9999-99-99',label:'Rango elegido'};
+  return {a:'0000-00-00',b:'9999-99-99',label:'Todo el histórico'};
 }
 function dFiltered(){
-  var r=dRange();
+  var r=nightsRange();
   return S.entries.filter(function(e){
-    if(e.date<r[0]||e.date>r[1])return false;
+    if(e.date<r.a||e.date>r.b)return false;
     if(DV.club!=='all'&&e.clubId!==DV.club)return false;
     if(DV.type!=='all'&&e.type!==DV.type)return false;
     if(DV.status==='in'&&!e.entered)return false;
@@ -218,43 +227,75 @@ function totals(list,useBonus){
   return t;
 }
 
-/* resumen por meses: neto de cada mes con sus semanas y noches, como en sus notas */
+/* Top 10: guests (lista/PAGO) por personas que han entrado y veces que repiten; clientes (mesas) */
+function topLists(){
+  var r=nightsRange(),G={},C={};
+  S.entries.forEach(function(e){
+    if(!e.entered||e.date<r.a||e.date>r.b)return;
+    if(DV.club!=='all'&&e.clubId!==DV.club)return;
+    var k=pkey(e.name),M=e.type==='mesa'?C:G;
+    var x=M[k]||(M[k]={name:e.name,people:0,visits:0,spend:0,fee:0,last:''});
+    x.people+=heads(e);x.visits++;x.fee+=amt(e);if(hasNum(e.spend))x.spend+=+e.spend;
+    if(e.date>x.last){x.last=e.date;x.name=e.name}
+  });
+  function arr(M,f){return Object.keys(M).map(function(k){return M[k]}).sort(f).slice(0,10)}
+  return {
+    guests:arr(G,function(a,b){return b.people-a.people||b.visits-a.visits||a.name.localeCompare(b.name)}),
+    clients:arr(C,function(a,b){return b.visits-a.visits||b.spend-a.spend||b.people-a.people||a.name.localeCompare(b.name)})
+  };
+}
+function topCard(title,sub,rows,kind){
+  var h='<div class="card"><h2>'+title+'</h2><div class="sub">'+sub+'</div>';
+  if(!rows.length)return h+'<div class="empty" style="padding:18px 8px">Sin datos en este periodo.</div></div>';
+  h+='<ol class="top">';
+  rows.forEach(function(x,i){
+    var line=kind==='g'?plural(x.visits,'visita','visitas')+(x.visits>1?' · repite':'')
+      :plural(x.visits,'mesa','mesas')+' · '+plural(x.people,'persona','personas')+(x.spend>0?' · consumo '+eur(x.spend):'');
+    var val=kind==='g'?'<b class="num">'+x.people+'</b><span>personas</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'mesa':'mesas')+'</span>';
+    h+='<li><span class="rk num">'+(i+1)+'</span><span class="tn">'+(kind==='c'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
+  });
+  return h+'</ol></div>';
+}
+
+/* resumen por meses: neto de cada mes por discoteca, semanas del mes y noches */
 function monthSummary(){
-  var BM=bonusMap(),M={};
-  function mo(k){return M[k]||(M[k]={key:k,gen:0,ret:0,bonus:0,net:0,people:0,mesas:0,days:{}})}
+  var BM=DV.type==='all'?bonusMap():{},M={};
+  function mo(k){return M[k]||(M[k]={key:k,gen:0,ret:0,bonus:0,net:0,people:0,mesas:0,days:{},clubs:{}})}
+  function cb(m,id){return m.clubs[id]||(m.clubs[id]={net:0,people:0})}
   S.entries.forEach(function(e){
     if(!e.entered)return;
-    var m=mo(e.date.slice(0,7)),a=amt(e),p=pay(e);
-    m.gen+=a;m.ret+=p;m.people+=heads(e);
+    if(DV.club!=='all'&&e.clubId!==DV.club)return;
+    if(DV.type!=='all'&&e.type!==DV.type)return;
+    var m=mo(e.date.slice(0,7)),a=amt(e),p=pay(e),c=cb(m,e.clubId);
+    m.gen+=a;m.ret+=p;m.people+=heads(e);c.net+=a-p;c.people+=heads(e);
     if(e.type==='mesa')m.mesas++;
     m.days[e.date]=(m.days[e.date]||0)+a-p;
   });
   Object.keys(BM).forEach(function(k){
-    var date=k.split('|')[1],m=mo(date.slice(0,7));
-    m.gen+=BM[k];m.bonus+=BM[k];m.days[date]=(m.days[date]||0)+BM[k];
+    var id=k.split('|')[0],date=k.split('|')[1];
+    if(DV.club!=='all'&&id!==DV.club)return;
+    var m=mo(date.slice(0,7));
+    m.gen+=BM[k];m.bonus+=BM[k];cb(m,id).net+=BM[k];m.days[date]=(m.days[date]||0)+BM[k];
   });
   return Object.keys(M).sort().reverse().map(function(k){M[k].net=M[k].gen-M[k].ret;return M[k]});
 }
 function weeksOf(m){
-  var ds=Object.keys(m.days).sort(),wk={},order=[];
-  ds.forEach(function(d){
-    var w=weekStart(d);
-    if(!wk[w]){wk[w]={net:0,days:[]};order.push(w)}
-    wk[w].net+=m.days[d];wk[w].days.push({date:d,net:m.days[d]});
+  var wk={},order=[];
+  Object.keys(m.days).sort().forEach(function(d){
+    var n=weekOfMonth(d);
+    if(!wk[n]){wk[n]={net:0,days:[]};order.push(n)}
+    wk[n].net+=m.days[d];wk[n].days.push({date:d,net:m.days[d]});
   });
-  return order.map(function(w,i){return {n:i+1,net:wk[w].net,days:wk[w].days}});
+  return order.map(function(n){return {n:n,net:wk[n].net,days:wk[n].days}});
 }
-function renderMonths(){
-  var card=$('#monthsCard'),all=monthSummary();
-  var head='<h2>Resumen por meses</h2><div class="sub">Lo que te queda cada mes, con bonus y sin lo que pagas a otros promotores.</div>';
-  if(!all.length){
-    card.innerHTML=head+'<div class="empty"><b>Aún no hay noches cerradas</b>Marca quién ha entrado en la pestaña Listas y aquí verás lo que llevas cada mes.</div>';
-    return;
-  }
+function monthsHtml(){
+  var all=monthSummary(),cl=DV.club==='all'?'todas las discotecas':(club(DV.club)||{name:'esta discoteca'}).name;
+  var head='<h2>Resumen por meses</h2><div class="sub">Lo que te queda cada mes en '+esc(cl)+', con bonus y sin lo que pagas a otros promotores.</div>';
+  if(!all.length)return '<div class="card" id="monthsCard">'+head+'<div class="empty"><b>Aún no hay noches cerradas</b>Marca quién ha entrado en la pestaña Listas y aquí verás lo que llevas cada mes.</div></div>';
   if(DV.openMonth===null||(DV.openMonth!==''&&!all.some(function(m){return m.key===DV.openMonth})))DV.openMonth=all[0].key;
   var shown=DV.moreMonths?all:all.slice(0,4);
   var max=Math.max.apply(null,all.map(function(m){return Math.max(m.net,0)}).concat([1]));
-  var h=head+'<div class="months">';
+  var h='<div class="card" id="monthsCard">'+head+'<div class="months">';
   shown.forEach(function(m){
     var open=DV.openMonth===m.key,w=Math.max(0,m.net)/max*100;
     h+='<button class="mrow" type="button" data-m="'+esc(m.key)+'" aria-expanded="'+(open?'true':'false')+'">'
@@ -263,6 +304,12 @@ function renderMonths(){
       +'<div class="mbar" style="width:'+w.toFixed(1)+'%"></div></button>';
     if(open){
       h+='<div class="weeks">';
+      var ids=Object.keys(m.clubs);
+      if(ids.length>1){
+        h+='<div><div class="week-h"><span>Por discoteca</span></div>'
+          +ids.sort(function(a,b){return m.clubs[b].net-m.clubs[a].net}).map(function(id){
+            var c=club(id);return '<div class="week-d"><span>'+esc(c?c.name:'Sin discoteca')+' · '+m.clubs[id].people+'</span><span class="num">'+esc(eur(m.clubs[id].net))+'</span></div>'}).join('')+'</div>';
+      }
       weeksOf(m).forEach(function(wk){
         h+='<div><div class="week-h"><span>Semana '+wk.n+'</span><span class="num">'+esc(eur(wk.net))+'</span></div>'
           +wk.days.map(function(d){return '<div class="week-d"><span>'+esc(dayName(d.date))+'</span><span class="num">'+esc(eur(d.net))+'</span></div>'}).join('')+'</div>';
@@ -272,7 +319,7 @@ function renderMonths(){
   });
   h+='</div>';
   if(all.length>4)h+='<button class="btn ghost small more-months" type="button" data-more="1">'+(DV.moreMonths?'Ver menos meses':'Ver todos los meses ('+all.length+')')+'</button>';
-  card.innerHTML=h;
+  return h+'</div>';
 }
 
 function renderDashFilters(){
@@ -282,58 +329,42 @@ function renderDashFilters(){
   sel.value=DV.club;$('#d-type').value=DV.type;$('#d-status').value=DV.status;
   $$('#periodChips .chip').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.p===DV.period))});
   $('#rangeRow').hidden=DV.period!=='rango';
+  var nav=DV.period==='hoy'||DV.period==='sem'||DV.period==='mes'||DV.period==='anio';
+  $('#periodNav').hidden=DV.period==='rango';
+  $('#pPrev').hidden=!nav;$('#pNext').hidden=!nav;
+  $('#pLabel').textContent=nightsRange().label;
   $('#d-from').value=DV.from;$('#d-to').value=DV.to;
 }
 
 function renderDash(){
-  renderMonths();
-  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'),out=$('#dashOut');
+  var out=$('#dashOut');
   if(!S.clubs.length){
     out.innerHTML='<div class="card empty"><b>Aún no hay discotecas</b>Añade la primera en la pestaña Discotecas para empezar a apuntar guests.</div>';return;
   }
-  if(!list.length){
-    out.innerHTML='<div class="card empty"><b>Nada que mostrar</b>No hay guests con estos filtros. Prueba otro periodo o apunta gente en la pestaña Listas.</div>';return;
-  }
-  var neto=t.gen-t.ret,prevNeto=t.prevGen-t.prevRet,rate100=t.heads?Math.round(t.inHeads/t.heads*100):0;
+  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'),lab=nightsRange().label;
   var h='';
-  h+='<div class="card hero"><span class="lbl">Balance neto</span><span class="big num">'+esc(eur(neto))+'</span>'
-   +'<div class="line"><span>Generado <b class="num">'+esc(eur(t.gen))+'</b></span>'
-   +(t.bonus>0?'<span>Bonus <b class="num">+'+esc(eur(t.bonus))+'</b></span>':'')
-   +(t.ret>0?'<span>Retiros PAGO <b class="num">−'+esc(eur(t.ret))+'</b></span>':'')
-   +(t.mesas>0?'<span>⭐ <b class="num">'+plural(t.mesas,'mesa','mesas')+'</b></span>':'')
-   +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> si entran los pendientes</span>':'')+'</div></div>';
-  h+='<div class="tiles">'
-   +'<div class="tile"><div class="v num">'+t.heads+'</div><div class="l">Apuntados</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
-   +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Han entrado</div><div class="d">'+(t.heads-t.inHeads)+' pendientes</div></div>'
-   +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entrada</div><div class="d">de lo apuntado</div></div></div>';
-
-  var rows=S.clubs.filter(function(c){return t.clubs[c.id]}).map(function(c){return {c:c,d:t.clubs[c.id]}});
-  rows.sort(function(a,b){return b.d.gen-a.d.gen});
-  var max=Math.max.apply(null,rows.map(function(r){return r.d.gen}).concat([1]));
-  h+='<div class="card"><h2>Balance por discoteca</h2><div class="sub">Lo que genera cada sala y qué parte sale hacia otros promotores.</div>';
-  if(t.ret>0)h+='<div class="row-between" style="justify-content:flex-start;gap:16px;margin-top:10px;font-size:12px;color:var(--ink2)"><span style="display:inline-flex;gap:6px;align-items:center"><i class="dot"></i>Neto para ti</span><span style="display:inline-flex;gap:6px;align-items:center"><i class="dot pago"></i>Retiro PAGO</span></div>';
-  h+='<div class="bars">';
-  rows.forEach(function(r){
-    var net=r.d.gen-r.d.ret,w=r.d.gen/max*100;
-    var tipTxt=[r.c.name,'Dentro: '+r.d.inH+' de '+r.d.heads,'Generado: '+eur(r.d.gen)].concat(r.d.bonus?['Bonus: +'+eur(r.d.bonus)]:[]).concat(['Retiros PAGO: −'+eur(r.d.ret),'Neto: '+eur(net)]).join('|');
-    var seg='';
-    if(r.d.gen>0){
-      var wn=Math.max(0,net)/r.d.gen*100,wr=100-wn;
-      seg='<div style="display:flex;gap:2px;width:'+w.toFixed(1)+'%">'
-        +(wn>0?'<div class="bar" style="flex:'+wn.toFixed(2)+';'+(wr>0?'border-radius:0':'')+'"></div>':'')
-        +(wr>0?'<div class="bar pago" style="flex:'+wr.toFixed(2)+'"></div>':'')+'</div>';
-    }else seg='<div class="bar" style="width:2px;opacity:.4"></div>';
-    h+='<div class="bar-row" data-tip="'+esc(tipTxt)+'" tabindex="0"><div class="bar-name">'+esc(r.c.name)+'</div><div class="bar-val num">'+esc(eur(r.d.gen))+'</div>'
-      +'<div class="bar-track">'+seg+'</div>'
-      +'<div class="sub" style="grid-column:1/-1">'+r.d.inH+' dentro de '+r.d.heads+(r.d.bonus?' · bonus +'+esc(eur(r.d.bonus)):'')+(r.d.ret>0?' · retiros −'+esc(eur(r.d.ret))+' · neto '+esc(eur(net)):'')+'</div></div>';
-  });
-  h+='</div>';
-  h+='<details class="more" style="margin-top:12px"><summary>Ver como tabla</summary><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Discoteca</th><th>Dentro</th><th>Generado</th><th>Retiros</th><th>Neto</th></tr></thead><tbody>'
-    +rows.map(function(r){return '<tr><td>'+esc(r.c.name)+'</td><td class="num">'+r.d.inH+'/'+r.d.heads+'</td><td class="num">'+esc(eur(r.d.gen))+'</td><td class="num">'+esc(eur(r.d.ret))+'</td><td class="num">'+esc(eur(r.d.gen-r.d.ret))+'</td></tr>'}).join('')
-    +'<tr><th>Total</th><th class="num">'+t.inHeads+'/'+t.heads+'</th><th class="num">'+esc(eur(t.gen))+'</th><th class="num">'+esc(eur(t.ret))+'</th><th class="num">'+esc(eur(neto))+'</th></tr></tbody></table></div></details></div>';
+  if(!list.length){
+    h+='<div class="card empty"><b>Nada que mostrar</b>No hay guests con estos filtros. Prueba otro periodo o apunta gente en la pestaña Listas.</div>';
+  }else{
+    var neto=t.gen-t.ret,prevNeto=t.prevGen-t.prevRet,rate100=t.heads?Math.round(t.inHeads/t.heads*100):0;
+    h+='<div class="card hero"><span class="lbl">Balance neto · '+esc(lab)+'</span><span class="big num">'+esc(eur(neto))+'</span>'
+     +'<div class="line"><span>Generado <b class="num">'+esc(eur(t.gen))+'</b></span>'
+     +(t.bonus>0?'<span>Bonus <b class="num">+'+esc(eur(t.bonus))+'</b></span>':'')
+     +(t.ret>0?'<span>Retiros PAGO <b class="num">−'+esc(eur(t.ret))+'</b></span>':'')
+     +(t.mesas>0?'<span>⭐ <b class="num">'+plural(t.mesas,'mesa','mesas')+'</b></span>':'')
+     +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> si entran los pendientes</span>':'')+'</div></div>';
+    h+='<div class="tiles">'
+     +'<div class="tile"><div class="v num">'+t.heads+'</div><div class="l">Apuntados</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
+     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Han entrado</div><div class="d">'+(t.heads-t.inHeads)+' pendientes</div></div>'
+     +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entrada</div><div class="d">de lo apuntado</div></div></div>';
+  }
+  var tp=topLists();
+  h+=topCard('Top 10 guests','Quién ha llevado más gente y cuántas veces repite · '+esc(lab),tp.guests,'g');
+  h+=topCard('Top 10 clientes','Los que vienen con mesa · '+esc(lab),tp.clients,'c');
+  h+=monthsHtml();
 
   var days=Object.keys(t.days).sort().slice(-14);
-  if(days.length>1){
+  if(list.length&&days.length>1){
     h+='<div class="card"><h2>Personas dentro por noche</h2><div class="sub">Todas las personas que han entrado.</div><div class="chart-box" id="colChart"></div></div>';
   }
 
@@ -349,7 +380,7 @@ function renderDash(){
     h+='</div></div>';
   }
   out.innerHTML=h;
-  if(days.length>1)drawColumns($('#colChart'),days,t.days);
+  if(list.length&&days.length>1)drawColumns($('#colChart'),days,t.days);
 }
 
 function niceMax(m){return Math.max(4,Math.ceil(m/4)*4)}
@@ -384,26 +415,26 @@ function markPaid(prom){
 }
 
 function bindDash(){
-  $('#monthsCard').addEventListener('click',function(ev){
-    var more=ev.target.closest('[data-more]');
-    if(more){DV.moreMonths=!DV.moreMonths;renderMonths();return}
-    var b=ev.target.closest('.mrow');if(!b)return;
-    DV.openMonth=DV.openMonth===b.dataset.m?'':b.dataset.m;
-    renderMonths();
-  });
   $('#periodChips').addEventListener('click',function(ev){
     var b=ev.target.closest('.chip');if(!b)return;
-    DV.period=b.dataset.p;
+    DV.period=b.dataset.p;DV.off=0;
     if(DV.period==='rango'&&!DV.from){DV.to=nightDate();DV.from=addDays(DV.to,-6)}
     renderDashFilters();renderDash();
   });
+  $('#pPrev').onclick=function(){DV.off--;renderDashFilters();renderDash()};
+  $('#pNext').onclick=function(){DV.off++;renderDashFilters();renderDash()};
   $('#d-club').onchange=function(){DV.club=this.value;renderDash()};
   $('#d-type').onchange=function(){DV.type=this.value;renderDash()};
   $('#d-status').onchange=function(){DV.status=this.value;renderDash()};
-  $('#d-from').onchange=function(){DV.from=this.value;renderDash()};
-  $('#d-to').onchange=function(){DV.to=this.value;renderDash()};
+  $('#d-from').onchange=function(){DV.from=this.value;renderDashFilters();renderDash()};
+  $('#d-to').onchange=function(){DV.to=this.value;renderDashFilters();renderDash()};
   $('#dashOut').addEventListener('click',function(ev){
-    var b=ev.target.closest('[data-act="paid"]');if(b)markPaid(b.dataset.prom);
+    var p=ev.target.closest('[data-act="paid"]');if(p){markPaid(p.dataset.prom);return}
+    var more=ev.target.closest('[data-more]');
+    if(more){DV.moreMonths=!DV.moreMonths;renderDash();return}
+    var b=ev.target.closest('.mrow');if(!b)return;
+    DV.openMonth=DV.openMonth===b.dataset.m?'':b.dataset.m;
+    renderDash();
   });
   window.addEventListener('resize',function(){var el=$('#colChart');if(el&&!$('#view-dash').hidden)renderDash()});
 }
@@ -427,7 +458,6 @@ document.addEventListener('focusout',hideTip);
 window.addEventListener('scroll',hideTip,{passive:true});
 
 /* =========================== LISTAS (simple) =========================== */
-LV.edit=null;
 function ensureClub(){
   if(!club(LV.club))LV.club=S.clubs.length?S.clubs[0].id:'';
 }
@@ -435,8 +465,11 @@ function dayEntries(){
   return S.entries.filter(function(e){return e.date===LV.date&&e.clubId===LV.club}).sort(function(a,b){return (a.ts||0)-(b.ts||0)});
 }
 function pillsFor(e){
-  if(hasSplit(e))return (e.m?'<span class="pill m">'+e.m+(e.m===1?' chico':' chicos')+'</span>':'')+(e.f?'<span class="pill f">'+e.f+(e.f===1?' chica':' chicas')+'</span>':'');
+  if(hasSplit(e))return (e.f?'<span class="pill f">'+e.f+(e.f===1?' chica':' chicas')+'</span>':'')+(e.m?'<span class="pill m">'+e.m+(e.m===1?' chico':' chicos')+'</span>':'');
   return e.n>1?'<span class="pill">'+e.n+' pers.</span>':'';
+}
+function readCounts(pf,pm){
+  return {f:Math.max(0,parseInt($(pf).value,10)||0),m:Math.max(0,parseInt($(pm).value,10)||0)};
 }
 
 function renderForm(){
@@ -445,28 +478,26 @@ function renderForm(){
   $('#f-pago').hidden=LV.type!=='pago';
   $('#promoters').innerHTML=promoters().map(function(p){return '<option value="'+esc(p)+'">'}).join('');
   $('#btnAdd').disabled=!LV.club;
+  $$('.hostbtn').forEach(function(b){b.disabled=!LV.club});
 }
 
 function renderHint(){
-  var v=$('#f-name').value.trim(),h=$('#hint');
-  if(!v){h.innerHTML='Nombre y número de personas. <b>6+3</b> = 6 chicos + 3 chicas. Pon ⭐ al final para mesa.';return}
-  var q=parseQuick(v);
-  h.innerHTML='<b>'+esc(q.name||'…')+'</b> · '+esc(peopleText(q.n,q.m,q.f))+(q.mesa||LV.type==='mesa'?' · ⭐ mesa':'')+(LV.type==='pago'?' · PAGO':'');
+  var h=$('#hint'),name=$('#f-name').value.trim(),c=readCounts('#f-f','#f-m'),n=c.f+c.m;
+  if(!name&&!n){h.innerHTML='Nombre, chicas y chicos. Los botones <b>Host</b> apuntan al momento con ese extra.';return}
+  h.innerHTML='<b>'+esc(name||'…')+'</b> · '+esc(n?splitText(n,c.m,c.f):'1 persona')+(LV.type==='mesa'?' · ⭐ mesa':'')+(LV.type==='pago'?' · PAGO':'');
 }
 
 function renderSugg(){
-  var box=$('#sugg'),v=$('#f-name').value;
-  var q=parseQuick(v),k=norm(q.name);
-  if(!k||/\s\d{1,2}(\s*\+\s*\d{0,2})?\s*$/.test(v)){box.hidden=true;box.innerHTML='';return}
-  var hits=Object.keys(S.profiles).filter(function(x){return x.indexOf(k)!==-1&&x!==k}).slice(0,5);
-  var exact=S.profiles[k];
-  if(exact)hits.unshift(k);
-  hits=hits.filter(function(x,i){return hits.indexOf(x)===i}).slice(0,5);
+  var box=$('#sugg'),v=$('#f-name').value,k=norm(v);
+  if(!k){box.hidden=true;box.innerHTML='';return}
+  var hits=Object.keys(S.profiles).filter(function(x){return x.indexOf(k)!==-1&&x!==k});
+  if(S.profiles[k])hits.unshift(k);
+  hits=hits.slice(0,5);
   if(!hits.length){box.hidden=true;box.innerHTML='';return}
   box.innerHTML=hits.map(function(x){
-    var p=S.profiles[x];
-    return '<button type="button" data-sg="'+esc(x)+'"><b>'+esc(p.type==='mesa'?'⭐ ':'')+esc(p.name)+' <span class="muted">'+esc(countText(p.n||1,p.m||0,p.f||0))+'</span></b>'
-      +(p.desc?'<span class="sub">'+esc(p.desc.slice(0,60))+'</span>':'')+'</button>';
+    var p=S.profiles[x],first=p.desc?String(p.desc).split('\n')[0]:'';
+    return '<button type="button" data-sg="'+esc(x)+'"><b>'+esc(p.type==='mesa'?'⭐ ':'')+esc(p.name)+' <span class="muted">'+esc(splitText(p.n||1,p.m||0,p.f||0))+'</span></b>'
+      +(first?'<span class="sub">'+esc(first.slice(0,60))+'</span>':'')+'</button>';
   }).join('');
   box.hidden=false;
 }
@@ -474,8 +505,7 @@ function renderSugg(){
 function renderLists(){
   ensureClub();
   var today=nightDate();
-  $('#dayLabel').innerHTML=esc(fmtLong(LV.date))+(LV.date===today?'<small>Esta noche</small>':'');
-  $('#dayNext').disabled=false;
+  $('#dayLabel').innerHTML='<span class="dl">'+esc(fmtLong(LV.date))+' ▾</span>'+(LV.date===today?'<small>Esta noche</small>':'<small>Toca para abrir el calendario</small>');
   var sel=$('#clubSel');sel.innerHTML=S.clubs.map(function(c){return '<option value="'+esc(c.id)+'"'+(c.id===LV.club?' selected':'')+'>'+esc(c.name)+'</option>'}).join('');sel.disabled=!S.clubs.length;
   var out=$('#listOut'),sum=$('#sumBar');
   if(!S.clubs.length){
@@ -494,7 +524,7 @@ function renderLists(){
   }
   sum.innerHTML=s;
   if(!list.length){
-    out.innerHTML='<div class="card empty"><b>Nada apuntado</b>Escribe un nombre y el número de personas arriba, por ejemplo <b>Quique 6+3</b>.</div>';
+    out.innerHTML='<div class="card empty"><b>Nada apuntado</b>Escribe el nombre y pon cuántas chicas y chicos vienen.</div>';
     return;
   }
   var h='<div class="card" style="padding:4px 14px"><ul class="list">';
@@ -504,9 +534,9 @@ function renderLists(){
       +'<button class="row-main" type="button" data-act="toggle" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.entered)+'" aria-label="'+esc(e.name)+': '+(e.entered?'ha entrado':'pendiente')+'">'
       +'<span class="ring">'+ICON_CHECK+'</span>'
       +'<span><span class="nm">'+(e.type==='mesa'?'<span aria-label="mesa">⭐</span>':'')+'<span>'+esc(e.name)+'</span>'+pillsFor(e)
+      +(hasNum(e.extra)&&+e.extra>0?'<span class="tag" style="color:var(--s3)">Host '+esc(eur(+e.extra))+'</span>':'')
       +(e.type==='pago'?'<span class="tag" style="color:var(--s2)">PAGO'+(e.promoter?' · '+esc(e.promoter):'')+'</span>':'')+'</span>'
-      +(d?'<span class="desc" style="display:block">'+linkify(d)+'</span>':'')
-      +(e.names&&e.names.length?'<span class="desc" style="display:block">Con: '+esc(e.names.join(', '))+'</span>':'')
+      +(d?'<span class="desc" style="display:block;white-space:pre-line">'+linkify(d)+'</span>':'')
       +'</span></button>'
       +'<button class="dots" type="button" data-act="edit" data-id="'+esc(e.id)+'" aria-label="Editar '+esc(e.name)+'">⋯</button>';
     if(LV.edit===e.id)h+=editPanel(e);
@@ -517,16 +547,20 @@ function renderLists(){
 }
 
 function editPanel(e){
-  var pr=profileOf(e.name)||{},id=esc(e.id);
+  var pr=profileOf(e.name)||{},id=esc(e.id),sp=hasSplit(e);
   var h='<div class="edit">'
     +'<label class="f" for="e-name">Nombre<input class="in" id="e-name" type="text" value="'+esc(e.name)+'"></label>'
+    +'<div class="grid2">'
+    +'<label class="f cnt f-g" for="e-f"><span>Chicas</span><input class="in num" id="e-f" type="number" inputmode="numeric" min="0" value="'+(sp?e.f:0)+'"></label>'
+    +'<label class="f cnt f-b" for="e-m"><span>Chicos</span><input class="in num" id="e-m" type="number" inputmode="numeric" min="0" value="'+(sp?e.m:0)+'"></label>'
+    +'</div>'
+    +(sp?'':'<div class="sub">Ahora cuenta '+plural(e.n,'persona','personas')+' sin desglose. Si dejas 0 y 0 se mantiene.</div>')
     +'<div class="grid2">'
     +'<label class="f" for="e-club">Discoteca<select class="in" id="e-club">'+S.clubs.map(function(c){return '<option value="'+esc(c.id)+'"'+(c.id===e.clubId?' selected':'')+'>'+esc(c.name)+'</option>'}).join('')+'</select></label>'
     +'<label class="f" for="e-type">Tipo<select class="in" id="e-type"><option value="lista"'+(e.type==='lista'?' selected':'')+'>Lista</option><option value="mesa"'+(e.type==='mesa'?' selected':'')+'>⭐ Mesa</option><option value="pago"'+(e.type==='pago'?' selected':'')+'>PAGO</option></select></label>'
     +'</div>'
-    +'<label class="f" for="e-n">Personas (6+3 = chicos + chicas)<input class="in num" id="e-n" type="text" inputmode="text" value="'+esc(countText(e.n,e.m,e.f))+'"></label>'
-    +'<label class="f" for="e-names">Nombres de los acompañantes (separados por coma)<input class="in" id="e-names" type="text" value="'+esc((e.names||[]).join(', '))+'"></label>'
-    +'<label class="f" for="e-desc">Descripción / Instagram<textarea class="in" id="e-desc" rows="2">'+esc(pr.desc||'')+'</textarea></label>';
+    +'<label class="f" for="e-desc">Descripción / Instagram / acompañantes<textarea class="in" id="e-desc" rows="3">'+esc(pr.desc||'')+'</textarea></label>'
+    +'<label class="f" for="e-extra">Extra Host (£)<input class="in num" id="e-extra" type="number" inputmode="decimal" min="0" step="10" value="'+esc(hasNum(e.extra)?e.extra:'')+'"></label>';
   if(e.type==='pago'){
     h+='<label class="f" for="e-prom">Promotor que lo envía<input class="in" id="e-prom" list="promoters" type="text" value="'+esc(e.promoter||'')+'"></label>'
       +'<label class="f" for="e-payout">A pagarle (£, vacío = lo que paga la sala)<input class="in num" id="e-payout" type="number" inputmode="decimal" min="0" step="0.5" value="'+esc(hasNum(e.payout)?e.payout:'')+'"></label>'
@@ -547,12 +581,11 @@ function saveEdit(id){
   var e=findEntry(id);if(!e)return;
   var name=$('#e-name').value.trim();
   if(!name){toast('Pon un nombre.');return}
-  var q=parseQuick('x '+($('#e-n').value.trim()||'1'));
-  var oldKey=pkey(e.name);
+  var c=readCounts('#e-f','#e-m'),oldKey=pkey(e.name),keep=!hasSplit(e)&&e.n>1&&c.f+c.m===0;
   e.name=name;e.clubId=$('#e-club').value;e.type=$('#e-type').value;
-  e.n=q.n;e.m=q.m;e.f=q.f;
-  e.names=$('#e-names').value.split(/[,\n]/).map(function(s){return s.trim()}).filter(Boolean);
+  if(!keep){e.m=c.m;e.f=c.f;e.n=Math.max(1,c.m+c.f)}
   var sp=$('#e-spend')?$('#e-spend').value:'';e.amount=null;if($('#e-spend'))e.spend=sp===''?null:+sp;
+  var ex=$('#e-extra').value;if(ex===''||+ex<=0)delete e.extra;else e.extra=+ex;
   if(e.type==='pago'){
     e.promoter=($('#e-prom')?$('#e-prom').value.trim():e.promoter)||'';
     var po=$('#e-payout')?$('#e-payout').value:'';e.payout=po===''?null:+po;
@@ -568,47 +601,91 @@ function saveEdit(id){
   save();renderAll();
 }
 
-function addEntry(){
-  var v=$('#f-name').value.trim();if(!v||!LV.club)return;
-  var q=parseQuick(v);
-  if(!q.name){toast('Escribe un nombre.');return}
-  var type=q.mesa?'mesa':LV.type;
-  var k=pkey(q.name);
-  if(dayEntries().some(function(e){return pkey(e.name)===k})){toast(q.name+' ya está apuntado en esta lista.');return}
-  var pr=S.profiles[k],hasNumTyped=q.n>1||/\s1\s*$/.test(v)||/\+/.test(v);
-  var n=q.n,m=q.m,f=q.f;
-  if(!hasNumTyped&&pr){n=pr.n||1;m=pr.m||0;f=pr.f||0}
-  var prom='';
-  if(type==='pago'){prom=$('#f-promoter').value.trim()||(pr&&pr.promoter)||''}
-  var e={id:uid(),date:LV.date,clubId:LV.club,name:q.name,type:type,n:n,m:m,f:f,names:[],entered:false,amount:null,promoter:prom,payout:null,paid:false,ts:Date.now()};
+function addEntry(extra){
+  if(!LV.club)return;
+  var name=$('#f-name').value.trim();
+  if(!name&&extra)name='Host';
+  if(!name){toast('Escribe el nombre.');$('#f-name').focus();return}
+  var k=pkey(name);
+  if(!(extra&&name==='Host')&&dayEntries().some(function(e){return pkey(e.name)===k})){toast(name+' ya está apuntado en esta lista.');return}
+  var c=readCounts('#f-f','#f-m'),pr=S.profiles[k],n=c.f+c.m;
+  if(n===0){if(pr&&pr.n&&!extra){n=pr.n;c.m=pr.m||0;c.f=pr.f||0}else n=1}
+  var prom=LV.type==='pago'?($('#f-promoter').value.trim()||(pr&&pr.promoter)||''):'';
+  var e={id:uid(),date:LV.date,clubId:LV.club,name:name,type:LV.type,n:n,m:c.m,f:c.f,names:[],entered:false,amount:null,promoter:prom,payout:null,paid:false,ts:Date.now()};
+  if(extra)e.extra=extra;
   S.entries.push(e);
-  upsertProfile(q.name,{clubId:LV.club,type:type,n:n,m:m,f:f,promoter:prom});
-  delete S.profiles[k].demo;
+  if(!(extra&&name==='Host')){upsertProfile(name,{clubId:LV.club,type:LV.type,n:n,m:c.m,f:c.f,promoter:prom});delete S.profiles[k].demo}
   save();
-  $('#f-name').value='';$('#f-promoter').value='';
+  $('#f-name').value='';$('#f-f').value='0';$('#f-m').value='0';$('#f-promoter').value='';
   $('#sugg').hidden=true;
   renderHint();renderForm();renderLists();
   $('#f-name').focus();
 }
 
+/* calendario para saltar entre noches: azul = hay lista, ⭐ = hay mesa */
+var CAL={open:false,month:''};
+function dayInfo(){
+  var m={};
+  S.entries.forEach(function(e){var x=m[e.date]||(m[e.date]={n:0,mesa:false});x.n++;if(e.type==='mesa')x.mesa=true});
+  return m;
+}
+function renderCal(){
+  var root=$('#calRoot');
+  if(!CAL.open){root.innerHTML='';return}
+  var p=CAL.month.split('-'),y=+p[0],mo=+p[1]-1,off=(new Date(y,mo,1).getDay()+6)%7,dim=new Date(y,mo+1,0).getDate(),info=dayInfo(),today=nightDate();
+  var h='<div class="scrim" id="calScrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Elegir noche">'
+    +'<div class="cal-head"><button type="button" class="cal-nav" data-cal="prev" aria-label="Mes anterior">‹</button><h2>'+esc(monthName(CAL.month))+'</h2><button type="button" class="cal-nav" data-cal="next" aria-label="Mes siguiente">›</button></div>'
+    +'<div class="cal-grid cal-dow">'+['L','M','X','J','V','S','D'].map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>'
+    +'<div class="cal-grid">';
+  for(var i=0;i<off;i++)h+='<span></span>';
+  for(var d=1;d<=dim;d++){
+    var date=iso(new Date(y,mo,d)),x=info[date];
+    h+='<button type="button" class="cal-d'+(x?' has':'')+(date===LV.date?' sel':'')+(date===today?' today':'')+'" data-cal-day="'+date+'" aria-label="'+esc(fmtLong(date))+(x?', hay lista':'')+(x&&x.mesa?' con mesa':'')+'">'+d+(x&&x.mesa?'<i class="st">⭐</i>':'')+'</button>';
+  }
+  h+='</div><div class="cal-legend"><span><i class="lg"></i>Hay lista</span><span>⭐ Hay mesa</span></div>'
+    +'<div class="cal-foot"><button type="button" class="btn ghost small" data-cal="today">Hoy</button><button type="button" class="btn small" data-cal="close">Cerrar</button></div></div></div>';
+  root.innerHTML=h;
+}
+function openCal(){CAL.open=true;CAL.month=LV.date.slice(0,7);renderCal()}
+function closeCal(){CAL.open=false;renderCal()}
+function shiftMonth(k,n){var p=k.split('-'),d=new Date(+p[0],+p[1]-1+n,1);return d.getFullYear()+'-'+pad(d.getMonth()+1)}
+
 function bindLists(){
   $('#dayPrev').onclick=function(){LV.date=addDays(LV.date,-1);LV.edit=null;renderLists()};
   $('#dayNext').onclick=function(){LV.date=addDays(LV.date,1);LV.edit=null;renderLists()};
-  $('#dayLabel').onclick=function(){LV.date=nightDate();LV.edit=null;renderLists()};
+  $('#dayLabel').onclick=openCal;
+  $('#calRoot').addEventListener('click',function(ev){
+    if(ev.target.id==='calScrim'){closeCal();return}
+    var dd=ev.target.closest('[data-cal-day]');
+    if(dd){LV.date=dd.dataset.calDay;LV.edit=null;closeCal();renderLists();return}
+    var b=ev.target.closest('[data-cal]');if(!b)return;
+    var a=b.dataset.cal;
+    if(a==='prev'){CAL.month=shiftMonth(CAL.month,-1);renderCal()}
+    else if(a==='next'){CAL.month=shiftMonth(CAL.month,1);renderCal()}
+    else if(a==='today'){LV.date=nightDate();LV.edit=null;closeCal();renderLists()}
+    else if(a==='close')closeCal();
+  });
+  document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&CAL.open)closeCal()});
   $('#clubSel').addEventListener('change',function(){LV.club=this.value;LV.edit=null;renderLists()});
   $$('input[name="f-type"]').forEach(function(r){r.addEventListener('change',function(){LV.type=r.value;renderForm();renderHint()})});
   $('#f-name').addEventListener('input',function(){renderHint();renderSugg()});
   $('#f-name').addEventListener('blur',function(){setTimeout(function(){$('#sugg').hidden=true},180)});
+  ['#f-f','#f-m'].forEach(function(s){
+    $(s).addEventListener('focus',function(){var t=this;setTimeout(function(){try{t.select()}catch(e){}},0)});
+    $(s).addEventListener('input',renderHint);
+  });
   $('#sugg').addEventListener('click',function(ev){
     var b=ev.target.closest('[data-sg]');if(!b)return;
     var p=S.profiles[b.dataset.sg];if(!p)return;
-    $('#f-name').value=p.name+' '+countText(p.n||1,p.m||0,p.f||0);
+    $('#f-name').value=p.name;
+    $('#f-f').value=p.f||0;$('#f-m').value=p.m||0;
+    if(!(p.m||p.f)&&p.n>1)$('#f-f').value=0;
     LV.type=p.type||'lista';
     if(LV.type==='pago'&&p.promoter)$('#f-promoter').value=p.promoter;
-    if(p.clubId&&club(p.clubId)&&false)LV.club=p.clubId;
     $('#sugg').hidden=true;renderForm();renderHint();$('#f-name').focus();
   });
-  $('#addForm').addEventListener('submit',function(ev){ev.preventDefault();addEntry()});
+  $('#addForm').addEventListener('submit',function(ev){ev.preventDefault();addEntry(0)});
+  $$('.hostbtn').forEach(function(b){b.addEventListener('click',function(){addEntry(+b.dataset.host)})});
   $('#listOut').addEventListener('click',function(ev){
     var b=ev.target.closest('[data-act]');if(!b)return;
     var a=b.dataset.act,id=b.dataset.id,e=id?findEntry(id):null;
