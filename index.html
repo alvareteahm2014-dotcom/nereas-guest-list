@@ -138,5 +138,12 @@ body{margin:0}
 <div id="toastRoot"></div>
 <div class="tip" id="tip" hidden></div>
 <script src="app.js"></script>
+<script>
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+  var hadSW=!!navigator.serviceWorker.controller,reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){if(hadSW&&!reloaded){reloaded=true;location.reload()}});
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').then(function(r){try{r.update()}catch(e){}}).catch(function(){})});
+}
+</script>
 </body>
 </html>
