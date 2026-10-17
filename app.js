@@ -253,7 +253,7 @@ function topCard(title,sub,rows,kind){
     var line=kind==='g'?plural(x.visits,'visita','visitas')+(x.visits>1?' · repite':'')
       :plural(x.visits,'mesa','mesas')+' · '+plural(x.people,'persona','personas')+(x.spend>0?' · consumo '+eur(x.spend):'');
     var val=kind==='g'?'<b class="num">'+x.people+'</b><span>personas</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'mesa':'mesas')+'</span>';
-    h+='<li><span class="rk num">'+(i+1)+'</span><span class="tn">'+(kind==='c'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
+    h+='<li><span class="rk num">'+(kind==='g'&&i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="tn">'+(kind==='c'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
   });
   return h+'</ol></div>';
 }
@@ -360,7 +360,7 @@ function renderDash(){
      +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entrada</div><div class="d">de lo apuntado</div></div></div>';
   }
   var tp=topLists();
-  h+=topCard('Top 10 guests','Quién ha llevado más gente y cuántas veces repite · '+esc(lab),tp.guests,'g');
+  h+=topCard('🏆 Top 10 guests','Quién ha llevado más gente y cuántas veces repite · '+esc(lab),tp.guests,'g');
   h+=topCard('Top 10 clientes','Los que vienen con mesa · '+esc(lab),tp.clients,'c');
   h+=monthsHtml();
 
