@@ -758,15 +758,13 @@ function invData(c,a,b){
 function invNo(c,b){return (me().prefix||'INV')+'-'+b.replace(/-/g,'')+'-'+(S.clubs.indexOf(c)+1)}
 function invoiceHtml(c,a,b,d){
   var m=me(),bl=c.bill||{},vat=+m.vat||0,vatAmt=d.sub*vat/100,total=d.sub+vatAmt,today=nightDate();
-  var terms=hasNum(m.terms)?+m.terms:14;
   var from=(m.name||m.trade)?'<b>'+esc(m.trade||m.name)+'</b>'+(m.trade&&m.name?'<br>'+esc(m.name):'')+(m.addr?'<br>'+lines(m.addr):'')+(m.email?'<br>'+esc(m.email):'')+(m.phone?'<br>'+esc(m.phone):'')+(m.taxId?'<br>'+esc(m.taxId):''):'<span class="imiss">Add your details in Discotecas › Mis datos de facturación</span>';
   var to='<b>'+esc(bl.name||c.name)+'</b>'+(bl.addr?'<br>'+lines(bl.addr):'')+(bl.email?'<br>'+esc(bl.email):'')+(bl.taxId?'<br>'+esc(bl.taxId):'')+(bl.ref?'<br>Ref: '+esc(bl.ref):'')+((bl.addr||bl.name)?'':'<br><span class="imiss">Add billing details in Discotecas</span>');
   var h='<section class="invdoc"><div class="ihead"><div><h1>INVOICE</h1></div><table class="imeta">'
     +'<tr><td>Invoice no.</td><td><b>'+esc(invNo(c,b))+'</b></td></tr>'
     +'<tr><td>Date</td><td>'+esc(fmtEn(today))+'</td></tr>'
     +'<tr><td>Period</td><td>'+esc(fmtEn(a))+' – '+esc(fmtEn(b))+'</td></tr>'
-    +'<tr><td>Venue</td><td>'+esc(c.name)+'</td></tr>'
-    +'<tr><td>Due date</td><td>'+esc(fmtEn(addDays(today,terms)))+'</td></tr></table></div>'
+    +'<tr><td>Venue</td><td>'+esc(c.name)+'</td></tr></table></div>'
     +'<div class="iparties"><div><h3>From</h3>'+from+'</div><div><h3>Bill to</h3>'+to+'</div></div>'
     +'<table class="ilines"><thead><tr><th>Date</th><th>Description</th><th class="ir">Qty</th><th class="ir">Unit price</th><th class="ir">Amount</th></tr></thead><tbody>';
   d.rows.forEach(function(r){h+='<tr><td>'+esc(fmtEnD(r.date))+'</td><td>'+esc(r.desc)+'</td><td class="ir">'+r.qty+'</td><td class="ir">'+esc(eur(r.unit))+'</td><td class="ir">'+esc(eur(r.amount))+'</td></tr>'});
@@ -775,7 +773,7 @@ function invoiceHtml(c,a,b,d){
     +(vat>0?'<div><span>VAT ('+vat+'%)</span><span>'+esc(eur(vatAmt))+'</span></div>':'')
     +'<div class="ig"><span>Total due</span><span>'+esc(eur(total))+'</span></div></div>'
     +'<div class="ipay"><h3>Payment details</h3>'+(m.bank?lines(m.bank):'<span class="imiss">Add your bank details in Discotecas › Mis datos de facturación</span>')
-    +'<div style="margin-top:8px;color:#666">Payment due within '+terms+' days of invoice date.</div></div></section>';
+    +'<div style="margin-top:8px;color:#666">I am responsible of my own taxes and National Insurance contributions</div></div></section>';
   return h;
 }
 function invList(){
@@ -875,7 +873,7 @@ function augmentClubs(out){
     +bf('me','addr','Dirección',m.addr,'ta')+bf('me','email','Email',m.email)+bf('me','phone','Teléfono',m.phone)
     +bf('me','taxId','UTR / VAT / Company no. (opcional)',m.taxId)
     +bf('me','bank','Datos bancarios (titular, sort code, cuenta / IBAN)',m.bank,'ta')
-    +'<div class="grid2">'+bf('me','prefix','Prefijo de invoice',m.prefix||'')+bf('me','terms','Días para pagar',hasNum(m.terms)?m.terms:14,'num')+'</div>'
+    +bf('me','prefix','Prefijo de invoice',m.prefix||'')
     +bf('me','vat','VAT % (0 si no aplica)',m.vat||0,'num')+'</div></details>');
   $$('.card',out).forEach(function(card){
     var i=card.querySelector('[data-cid]');if(!i||card.id==='meBox')return;
