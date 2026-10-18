@@ -199,7 +199,8 @@ function dFiltered(){
     if(DV.club!=='all'&&e.clubId!==DV.club)return false;
     if(DV.type!=='all'&&e.type!==DV.type)return false;
     if(DV.status==='in'&&!e.entered)return false;
-    if(DV.status==='out'&&e.entered)return false;
+    if(DV.status==='out'&&(e.entered||e.rejected))return false;
+    if(DV.status==='rej'&&!e.rejected)return false;
     return true;
   });
 }
@@ -221,7 +222,7 @@ function totals(list,useBonus){
         pr.total+=p;pr.n++;
         if(!e.paid){pr.pend+=p;t.retPend+=p}
       }
-    }else{t.prevGen+=a;t.prevRet+=p}
+    }else if(e.rejected){t.rej=(t.rej||0)+h}else{t.prevGen+=a;t.prevRet+=p}
     var bk=e.clubId+'|'+e.date;
     if(BM[bk]&&!seen[bk]){seen[bk]=1;t.gen+=BM[bk];t.bonus+=BM[bk];c.gen+=BM[bk];c.bonus+=BM[bk]}
   });
@@ -342,7 +343,7 @@ function renderDash(){
   if(!S.clubs.length){
     out.innerHTML='<div class="card empty"><b>Aún no hay discotecas</b>Añade la primera en la pestaña Discotecas para empezar a apuntar guests.</div>';return;
   }
-  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'),lab=nightsRange().label;
+  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'&&DV.status!=='rej'),lab=nightsRange().label;
   var h='';
   if(!list.length){
     h+='<div class="card empty"><b>Nada que mostrar</b>No hay guests con estos filtros. Prueba otro periodo o apunta gente en la pestaña Listas.</div>';
@@ -356,7 +357,7 @@ function renderDash(){
      +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> si entran los pendientes</span>':'')+'</div></div>';
     h+='<div class="tiles">'
      +'<div class="tile"><div class="v num">'+t.heads+'</div><div class="l">Apuntados</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
-     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Han entrado</div><div class="d">'+(t.heads-t.inHeads)+' pendientes</div></div>'
+     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Han entrado</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0))+' pendientes'+(t.rej?' · '+t.rej+' rechazados':'')+'</div></div>'
      +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entrada</div><div class="d">de lo apuntado</div></div></div>';
   }
   var tp=topLists();
@@ -515,10 +516,11 @@ function renderLists(){
     return;
   }
   var list=dayEntries(),c=club(LV.club);
-  var tot=0,inn=0,mesas=0;
-  list.forEach(function(e){tot+=heads(e);if(e.entered){inn+=heads(e);if(e.type==='mesa')mesas++}});
+  var tot=0,inn=0,mesas=0,rej=0;
+  list.forEach(function(e){tot+=heads(e);if(e.rejected)rej+=heads(e);if(e.entered){inn+=heads(e);if(e.type==='mesa')mesas++}});
   var s='<span><b class="num">'+inn+'</b> de '+tot+' dentro</span>';
   if(mesas)s+='<span>⭐ <b class="num">'+mesas+'</b></span>';
+  if(rej)s+='<span>🚫 <b class="num">'+rej+'</b> rechazados</span>';
   if(c&&c.bonusEvery>0&&c.bonusAmount>0){
     var got=Math.floor(inn/c.bonusEvery)*c.bonusAmount,left=c.bonusEvery-(inn%c.bonusEvery);
     s+='<span>Bonus <b class="num">'+esc(eur(got))+'</b> · faltan '+left+' para el siguiente</span>';
@@ -531,14 +533,16 @@ function renderLists(){
   var h='<div class="card" style="padding:4px 14px"><ul class="list">';
   list.forEach(function(e){
     var pr=profileOf(e.name),d=pr&&pr.desc;
-    h+='<li class="person'+(e.entered?' in':'')+'">'
+    h+='<li class="person'+(e.entered?' in':'')+(e.rejected?' rej':'')+'">'
       +'<button class="row-main" type="button" data-act="toggle" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.entered)+'" aria-label="'+esc(e.name)+': '+(e.entered?'ha entrado':'pendiente')+'">'
       +'<span class="ring">'+ICON_CHECK+'</span>'
       +'<span><span class="nm">'+(e.type==='mesa'?'<span aria-label="mesa">⭐</span>':'')+'<span>'+esc(e.name)+'</span>'+pillsFor(e)
       +(hasNum(e.extra)&&+e.extra>0?'<span class="tag" style="color:var(--s3)">Host '+esc(eur(+e.extra))+'</span>':'')
+      +(e.rejected?'<span class="tag" style="color:var(--crit)">Rechazado</span>':'')
       +(e.type==='pago'?'<span class="tag" style="color:var(--s2)">PAGO'+(e.promoter?' · '+esc(e.promoter):'')+'</span>':'')+'</span>'
       +(d?'<span class="desc" style="display:block;white-space:pre-line">'+linkify(d)+'</span>':'')
       +'</span></button>'
+      +'<button class="rejbtn" type="button" data-act="reject" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.rejected)+'" aria-label="'+(e.rejected?'Quitar rechazo de ':'Rechazar a ')+esc(e.name)+'">✕</button>'
       +'<button class="dots" type="button" data-act="edit" data-id="'+esc(e.id)+'" aria-label="Editar '+esc(e.name)+'">⋯</button>';
     if(LV.edit===e.id)h+=editPanel(e);
     h+='</li>';
@@ -690,7 +694,8 @@ function bindLists(){
   $('#listOut').addEventListener('click',function(ev){
     var b=ev.target.closest('[data-act]');if(!b)return;
     var a=b.dataset.act,id=b.dataset.id,e=id?findEntry(id):null;
-    if(a==='toggle'&&e){e.entered=!e.entered;save();renderLists()}
+    if(a==='toggle'&&e){e.entered=!e.entered;if(e.entered)e.rejected=false;save();renderLists()}
+    else if(a==='reject'&&e){e.rejected=!e.rejected;if(e.rejected)e.entered=false;save();renderLists()}
     else if(a==='edit'&&e){LV.edit=LV.edit===id?null:id;LV.confirmDel=null;renderLists()}
     else if(a==='cancel'){LV.edit=null;LV.confirmDel=null;renderLists()}
     else if(a==='save')saveEdit(id);
@@ -702,6 +707,211 @@ function bindLists(){
       toast(e.name+' borrado.',function(){restoreSnap(before)});
     }
   });
+}
+
+/* =========================== FACTURAS (INVOICES) =========================== */
+function me(){return S.me||(S.me={})}
+function isHostEntry(e){return hasNum(e.extra)&&+e.extra>0&&String(e.name).trim().toLowerCase()==='host'}
+function fmtEn(s){return parse(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
+function fmtEnD(s){return parse(s).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
+function lines(t){return esc(t||'').replace(/\n/g,'<br>')}
+var IV={open:false,from:'',to:'',view:null};
+var INV_CSS='.invdoc{background:#fff;color:#111;max-width:760px;margin:12px auto;padding:34px 30px;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;border-radius:6px;box-shadow:0 2px 14px rgba(0,0,0,.18)}'
++'.invdoc h1{margin:0;font-size:30px;letter-spacing:.06em;font-weight:800}'
++'.invdoc .ihead{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}'
++'.invdoc .imeta{border-collapse:collapse;font-size:13px}.invdoc .imeta td{padding:2px 0 2px 14px;text-align:right}.invdoc .imeta td:first-child{color:#666;text-align:left;padding-left:0}'
++'.invdoc .iparties{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:26px 0 20px}'
++'.invdoc .iparties h3{margin:0 0 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#777}'
++'.invdoc table.ilines{width:100%;border-collapse:collapse;font-size:13px}'
++'.invdoc .ilines th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#777;border-bottom:2px solid #111;padding:6px 4px}'
++'.invdoc .ilines td{padding:7px 4px;border-bottom:1px solid #e3e3e3;vertical-align:top}'
++'.invdoc .ir{text-align:right;white-space:nowrap}'
++'.invdoc .itot{margin:14px 0 0 auto;width:260px;font-size:13px}.invdoc .itot div{display:flex;justify-content:space-between;padding:3px 0}'
++'.invdoc .itot .ig{border-top:2px solid #111;margin-top:4px;padding-top:7px;font-size:17px;font-weight:800}'
++'.invdoc .ipay{margin-top:26px;padding-top:12px;border-top:1px solid #ddd;font-size:13px}.invdoc .ipay h3{margin:0 0 4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#777}'
++'.invdoc .imiss{color:#c0392b}.invdoc .inone{color:#777;padding:18px 0}'
++'@media (max-width:560px){.invdoc{padding:22px 16px}.invdoc .iparties{grid-template-columns:1fr}.invdoc .itot{width:100%}}'
++'@media print{.invdoc{box-shadow:none;margin:0;max-width:none;border-radius:0;padding:0;break-after:page;page-break-after:always}.invdoc:last-child{break-after:auto;page-break-after:auto}}';
+
+/* líneas de factura de una discoteca entre dos noches (solo lo que ha entrado) */
+function invData(c,a,b){
+  var days={},BM=bonusMap(),rows=[],sub=0;
+  function day(d){return days[d]||(days[d]={li:{n:0,a:0},me:{n:0,sp:0,a:0},ho:{n:0,a:0},bo:0})}
+  S.entries.forEach(function(e){
+    if(e.clubId!==c.id||!e.entered||e.rejected||e.date<a||e.date>b)return;
+    var d=day(e.date),x=amt(e);
+    if(isHostEntry(e)){d.ho.n++;d.ho.a+=x}
+    else if(e.type==='mesa'){d.me.n++;d.me.sp+=hasNum(e.spend)?+e.spend:0;d.me.a+=x}
+    else{d.li.n+=heads(e);d.li.a+=x}
+  });
+  Object.keys(BM).forEach(function(k){var p=k.split('|');if(p[0]===c.id&&p[1]>=a&&p[1]<=b)day(p[1]).bo=BM[k]});
+  Object.keys(days).sort().forEach(function(date){
+    var d=days[date];
+    if(d.li.n&&d.li.a>0)rows.push({date:date,desc:'Guest list · '+d.li.n+(d.li.n===1?' guest':' guests')+' entered',qty:d.li.n,unit:d.li.a/d.li.n,amount:d.li.a});
+    if(d.me.n&&d.me.a>0)rows.push({date:date,desc:'Table commission · '+d.me.n+(d.me.n===1?' table':' tables')+(d.me.sp>0?' · spend '+eur(d.me.sp):'')+(+c.pctMesa>0?' @ '+c.pctMesa+'%':''),qty:1,unit:d.me.a,amount:d.me.a});
+    if(d.ho.n&&d.ho.a>0)rows.push({date:date,desc:'Host fee'+(d.ho.n>1?' × '+d.ho.n:''),qty:d.ho.n,unit:d.ho.a/d.ho.n,amount:d.ho.a});
+    if(d.bo>0)rows.push({date:date,desc:'Attendance bonus'+(+c.bonusEvery>0?' (every '+c.bonusEvery+' guests)':''),qty:1,unit:d.bo,amount:d.bo});
+  });
+  rows.forEach(function(r){sub+=r.amount});
+  return {rows:rows,sub:sub,nights:Object.keys(days).length};
+}
+function invNo(c,b){return (me().prefix||'INV')+'-'+b.replace(/-/g,'')+'-'+(S.clubs.indexOf(c)+1)}
+function invoiceHtml(c,a,b,d){
+  var m=me(),bl=c.bill||{},vat=+m.vat||0,vatAmt=d.sub*vat/100,total=d.sub+vatAmt,today=nightDate();
+  var terms=hasNum(m.terms)?+m.terms:14;
+  var from=(m.name||m.trade)?'<b>'+esc(m.trade||m.name)+'</b>'+(m.trade&&m.name?'<br>'+esc(m.name):'')+(m.addr?'<br>'+lines(m.addr):'')+(m.email?'<br>'+esc(m.email):'')+(m.phone?'<br>'+esc(m.phone):'')+(m.taxId?'<br>'+esc(m.taxId):''):'<span class="imiss">Add your details in Discotecas › Mis datos de facturación</span>';
+  var to='<b>'+esc(bl.name||c.name)+'</b>'+(bl.addr?'<br>'+lines(bl.addr):'')+(bl.email?'<br>'+esc(bl.email):'')+(bl.taxId?'<br>'+esc(bl.taxId):'')+(bl.ref?'<br>Ref: '+esc(bl.ref):'')+((bl.addr||bl.name)?'':'<br><span class="imiss">Add billing details in Discotecas</span>');
+  var h='<section class="invdoc"><div class="ihead"><div><h1>INVOICE</h1></div><table class="imeta">'
+    +'<tr><td>Invoice no.</td><td><b>'+esc(invNo(c,b))+'</b></td></tr>'
+    +'<tr><td>Date</td><td>'+esc(fmtEn(today))+'</td></tr>'
+    +'<tr><td>Period</td><td>'+esc(fmtEn(a))+' – '+esc(fmtEn(b))+'</td></tr>'
+    +'<tr><td>Venue</td><td>'+esc(c.name)+'</td></tr>'
+    +'<tr><td>Due date</td><td>'+esc(fmtEn(addDays(today,terms)))+'</td></tr></table></div>'
+    +'<div class="iparties"><div><h3>From</h3>'+from+'</div><div><h3>Bill to</h3>'+to+'</div></div>'
+    +'<table class="ilines"><thead><tr><th>Date</th><th>Description</th><th class="ir">Qty</th><th class="ir">Unit price</th><th class="ir">Amount</th></tr></thead><tbody>';
+  d.rows.forEach(function(r){h+='<tr><td>'+esc(fmtEnD(r.date))+'</td><td>'+esc(r.desc)+'</td><td class="ir">'+r.qty+'</td><td class="ir">'+esc(eur(r.unit))+'</td><td class="ir">'+esc(eur(r.amount))+'</td></tr>'});
+  if(!d.rows.length)h+='<tr><td colspan="5" class="inone">No billable activity in this period.</td></tr>';
+  h+='</tbody></table><div class="itot"><div><span>Subtotal</span><span>'+esc(eur(d.sub))+'</span></div>'
+    +(vat>0?'<div><span>VAT ('+vat+'%)</span><span>'+esc(eur(vatAmt))+'</span></div>':'')
+    +'<div class="ig"><span>Total due</span><span>'+esc(eur(total))+'</span></div></div>'
+    +'<div class="ipay"><h3>Payment details</h3>'+(m.bank?lines(m.bank):'<span class="imiss">Add your bank details in Discotecas › Mis datos de facturación</span>')
+    +'<div style="margin-top:8px;color:#666">Payment due within '+terms+' days of invoice date.</div></div></section>';
+  return h;
+}
+function invList(){
+  var a=IV.from,b=IV.to,out=[];
+  if(!a||!b||a>b)return out;
+  S.clubs.forEach(function(c){var d=invData(c,a,b);if(d.rows.length)out.push({c:c,d:d})});
+  return out;
+}
+function renderInv(){
+  var root=$('#invRoot');
+  if(!IV.open){root.innerHTML='';return}
+  if(IV.view){
+    var L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
+    root.innerHTML='<div class="invview"><div class="invbar"><button type="button" class="btn ghost small" data-iv="back">‹ Volver</button>'
+      +'<button type="button" class="btn small" data-iv="print">Imprimir / PDF</button><button type="button" class="btn ghost small" data-iv="save">Guardar archivo</button></div>'
+      +'<style>'+INV_CSS+'</style>'+L.map(function(x){return invoiceHtml(x.c,IV.from,IV.to,x.d)}).join('')+'</div>';
+    return;
+  }
+  var h='<div class="scrim" id="ivScrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Crear invoice">'
+    +'<div class="row-between"><h2>Crear invoice</h2><button class="btn ghost small" type="button" data-iv="close">Cerrar</button></div>'
+    +'<p class="sub" style="margin:6px 0 10px">Elige las fechas y se crea una invoice por cada discoteca con lo que ha entrado en ese periodo.</p>'
+    +'<div class="chips" style="margin-bottom:10px"><button class="chip" type="button" data-iv="p-sem">Esta semana</button><button class="chip" type="button" data-iv="p-mes">Este mes</button><button class="chip" type="button" data-iv="p-ant">Mes anterior</button></div>'
+    +'<div class="grid2"><label class="f" for="iv-from">Fecha de inicio<input class="in" type="date" id="iv-from" value="'+esc(IV.from)+'"></label>'
+    +'<label class="f" for="iv-to">Fecha de fin<input class="in" type="date" id="iv-to" value="'+esc(IV.to)+'"></label></div>'
+    +'<div id="ivList"></div></div></div>';
+  root.innerHTML=h;renderInvList();
+}
+function renderInvList(){
+  var box=$('#ivList');if(!box)return;
+  var L=invList(),h='';
+  if(!IV.from||!IV.to||IV.from>IV.to){box.innerHTML='<div class="sub" style="margin-top:14px">Pon una fecha de inicio y otra de fin (el inicio no puede ser posterior).</div>';return}
+  if(!L.length){box.innerHTML='<div class="empty" style="padding:22px 6px"><b>Nada que facturar</b>No hay guests marcados como entrados en ese periodo.</div>';return}
+  var tot=0;
+  L.forEach(function(x){
+    var bl=x.c.bill||{},ok=bl.name&&bl.addr;tot+=x.d.sub;
+    h+='<div class="ivrow"><div><b>'+esc(x.c.name)+'</b><div class="sub">'+plural(x.d.nights,'noche','noches')+(ok?'':' · <span style="color:var(--crit)">faltan datos de facturación</span>')+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:10px"><b class="num">'+esc(eur(x.d.sub))+'</b><button class="btn ghost small" type="button" data-iv="view" data-cid="'+esc(x.c.id)+'">Ver</button></div></div>';
+  });
+  h+='<div class="ivrow"><div><b>Total</b></div><b class="num">'+esc(eur(tot))+'</b></div>';
+  h+='<button class="btn" type="button" data-iv="all" style="width:100%;margin-top:12px">Crear '+(L.length===1?'la invoice':'las '+L.length+' invoices')+'</button>';
+  var m=me();
+  if(!m.name&&!m.trade)h+='<div class="sub" style="margin-top:10px;color:var(--crit)">Rellena «Mis datos de facturación» en la pestaña Discotecas para que salgan en la invoice.</div>';
+  box.innerHTML=h;
+}
+function invSetRange(k){
+  var t=nightDate(),p=parse(t);
+  if(k==='sem'){IV.from=weekStart(t);IV.to=addDays(IV.from,6)}
+  else if(k==='mes'){IV.from=iso(new Date(p.getFullYear(),p.getMonth(),1));IV.to=iso(new Date(p.getFullYear(),p.getMonth()+1,0))}
+  else{IV.from=iso(new Date(p.getFullYear(),p.getMonth()-1,1));IV.to=iso(new Date(p.getFullYear(),p.getMonth(),0))}
+}
+function openInv(){
+  if(!IV.from||!IV.to)invSetRange('mes');
+  IV.open=true;IV.view=null;renderInv();
+}
+function invFile(){
+  var L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
+  var body=L.map(function(x){return invoiceHtml(x.c,IV.from,IV.to,x.d)}).join('');
+  var name=IV.view==='all'?'Invoices-'+IV.from+'_'+IV.to:'Invoice-'+(L[0]?invNo(L[0].c,IV.to):'')+'';
+  var html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(name)+'</title><style>body{margin:0;background:#e9e9ec}'+INV_CSS+'</style></head><body>'+body+'</body></html>';
+  return {name:name+'.html',html:html};
+}
+function invSave(){
+  var f=invFile();
+  try{
+    var file=new File([f.html],f.name,{type:'text/html'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:f.name}).catch(function(e){if(e&&e.name==='AbortError')return;toast('No se pudo guardar el archivo.')});
+      return;
+    }
+  }catch(e){}
+  try{
+    var url=URL.createObjectURL(new Blob([f.html],{type:'text/html'})),a=document.createElement('a');
+    a.href=url;a.download=f.name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url)},4000);toast('Archivo descargado');
+  }catch(e){toast('No se pudo guardar el archivo.')}
+}
+function invPrint(){
+  var old=document.title,L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
+  document.title=IV.view==='all'?'Invoices '+IV.from+' '+IV.to:(L[0]?invNo(L[0].c,IV.to):old);
+  var back=function(){document.title=old;window.removeEventListener('afterprint',back)};
+  window.addEventListener('afterprint',back);
+  try{window.print()}catch(e){document.title=old;toast('No se pudo abrir la impresión. Usa Guardar archivo.')}
+}
+
+/* datos de facturación: los tuyos (promoter) y los de cada discoteca */
+function bf(scope,key,label,val,kind){
+  var id='bf-'+scope+'-'+key,a=' id="'+id+'" data-bs="'+esc(scope)+'" data-bk="'+key+'"';
+  if(kind==='ta')return '<label class="f" for="'+id+'">'+label+'<textarea class="in"'+a+' rows="3">'+esc(val||'')+'</textarea></label>';
+  if(kind==='num')return '<label class="f" for="'+id+'">'+label+'<input class="in num"'+a+' type="number" inputmode="decimal" min="0" step="1" value="'+esc(val==null?'':val)+'"></label>';
+  return '<label class="f" for="'+id+'">'+label+'<input class="in"'+a+' type="text" value="'+esc(val||'')+'"></label>';
+}
+function augmentClubs(out){
+  var m=me();
+  out.insertAdjacentHTML('afterbegin','<details class="card billbox" id="meBox"><summary class="btn ghost small">Mis datos de facturación (promoter)</summary><div class="stack" style="margin-top:12px">'
+    +'<div class="sub">Salen como «From» en las invoices.</div>'
+    +bf('me','name','Tu nombre completo',m.name)+bf('me','trade','Nombre comercial / empresa (opcional)',m.trade)
+    +bf('me','addr','Dirección',m.addr,'ta')+bf('me','email','Email',m.email)+bf('me','phone','Teléfono',m.phone)
+    +bf('me','taxId','UTR / VAT / Company no. (opcional)',m.taxId)
+    +bf('me','bank','Datos bancarios (titular, sort code, cuenta / IBAN)',m.bank,'ta')
+    +'<div class="grid2">'+bf('me','prefix','Prefijo de invoice',m.prefix||'')+bf('me','terms','Días para pagar',hasNum(m.terms)?m.terms:14,'num')+'</div>'
+    +bf('me','vat','VAT % (0 si no aplica)',m.vat||0,'num')+'</div></details>');
+  $$('.card',out).forEach(function(card){
+    var i=card.querySelector('[data-cid]');if(!i||card.id==='meBox')return;
+    var c=club(i.dataset.cid);if(!c)return;var b=c.bill||{},id=esc(c.id);
+    card.insertAdjacentHTML('beforeend','<details class="billbox club"><summary class="btn ghost small">Datos de facturación</summary><div class="stack" style="margin-top:12px">'
+      +bf(id,'name','Razón social (a quién se factura)',b.name)+bf(id,'addr','Dirección',b.addr,'ta')+bf(id,'email','Email de facturación',b.email)
+      +bf(id,'taxId','VAT / Company no. (opcional)',b.taxId)+bf(id,'ref','Referencia / PO (opcional)',b.ref)+'</div></details>');
+  });
+}
+function bindInvoice(){
+  $('#btnInvoice').onclick=openInv;
+  $('#invRoot').addEventListener('click',function(ev){
+    if(ev.target.id==='ivScrim'){IV.open=false;renderInv();return}
+    var b=ev.target.closest('[data-iv]');if(!b)return;
+    var a=b.dataset.iv;
+    if(a==='close'){IV.open=false;renderInv()}
+    else if(a.indexOf('p-')===0){invSetRange(a.slice(2));renderInv()}
+    else if(a==='view'){IV.view=b.dataset.cid;renderInv();$('#invRoot').firstChild.scrollTop=0}
+    else if(a==='all'){IV.view='all';renderInv();$('#invRoot').firstChild.scrollTop=0}
+    else if(a==='back'){IV.view=null;renderInv()}
+    else if(a==='print')invPrint();
+    else if(a==='save')invSave();
+  });
+  $('#invRoot').addEventListener('change',function(ev){
+    var t=ev.target;
+    if(t.id==='iv-from'){IV.from=t.value;renderInvList()}
+    else if(t.id==='iv-to'){IV.to=t.value;renderInvList()}
+  });
+  $('#clubsOut').addEventListener('change',function(ev){
+    var t=ev.target,sc=t.dataset&&t.dataset.bs;if(!sc)return;
+    var k=t.dataset.bk,v=t.type==='number'?(t.value===''?'':Math.max(0,parseFloat(t.value)||0)):t.value.trim(),o;
+    if(sc==='me')o=me();else{var c=club(sc);if(!c)return;o=c.bill||(c.bill={})}
+    o[k]=v;if(t.type==='number')t.value=v;
+    delete (club(sc)||{}).demo;save();
+  });
+  document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&IV.open){if(IV.view){IV.view=null}else IV.open=false;renderInv()}});
 }
 
 /* =========================== AJUSTES, COPIA, ARRANQUE =========================== */
@@ -784,6 +994,7 @@ function renderClubs(){
   });
   h+='<button class="btn" type="button" data-ca="cadd" style="width:100%">Añadir discoteca</button>';
   out.innerHTML=h;
+  augmentClubs(out);
 }
 function bindClubs(){
   $('#clubsOut').addEventListener('click',function(ev){
@@ -863,7 +1074,7 @@ function renderAll(){
 try{localStorage.setItem('nereas-guest-list.probe','1');localStorage.removeItem('nereas-guest-list.probe')}catch(e){storageOk=false}
 S=load()||demoData();
 save();
-bindDash();bindLists();bindClubs();bindShell();
+bindDash();bindLists();bindClubs();bindShell();bindInvoice();
 try{var tb=localStorage.getItem('nereas-guest-list.tab');TAB=tb==='lists'||tb==='clubs'?tb:'dash'}catch(e){}
 renderAll();
 setTab(TAB);

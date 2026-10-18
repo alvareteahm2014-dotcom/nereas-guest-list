@@ -219,3 +219,20 @@ ol.toplist li:first-child{border-top:0}
 .tv{text-align:right;display:flex;flex-direction:column;line-height:1.1}
 .tv b{font-size:18px}
 .tv span{font-size:11px;color:var(--muted)}
+
+/* v5: rechazados, facturas */
+.person{grid-template-columns:1fr auto auto}
+.rejbtn{width:40px;height:56px;border:0;background:transparent;color:var(--muted);font-size:18px;font-weight:700;line-height:1}
+.rejbtn[aria-pressed="true"]{color:var(--crit)}
+.person.rej .ring{border-color:var(--crit);color:var(--crit)}
+.person.rej .ring svg{display:none}
+.person.rej .ring::after{content:"\2715";font-size:15px;font-weight:800}
+.person.rej .nm{color:var(--ink2)}
+.billbox>summary{cursor:pointer;list-style:none}
+.billbox>summary::-webkit-details-marker{display:none}
+.billbox>summary.btn{display:flex;align-items:center;justify-content:center;text-align:center}
+.billbox.club{margin-top:12px}
+.ivrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--grid)}
+.invview{position:fixed;inset:0;z-index:60;background:#e9e9ec;overflow:auto;padding:0 12px 24px}
+.invbar{position:sticky;top:0;z-index:2;display:flex;gap:8px;flex-wrap:wrap;padding:10px 0;background:#e9e9ec}
+@media print{body>*:not(#invRoot){display:none!important}.invview{position:static;background:#fff;overflow:visible;padding:0}.invbar{display:none}}

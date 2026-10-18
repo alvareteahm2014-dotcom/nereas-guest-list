@@ -36,6 +36,7 @@ body{margin:0}
   <main>
     <!-- PESTAÑA 1: DASHBOARD -->
     <section id="view-dash" class="stack" role="tabpanel" aria-labelledby="tab-dash">
+      <button class="btn" id="btnInvoice" type="button" style="width:100%">🧾 Crear invoice</button>
       <div class="card stack" style="gap:12px">
         <div class="chips" id="periodChips" role="group" aria-label="Periodo">
           <button class="chip" type="button" data-p="hoy" aria-pressed="false">Noche</button>
@@ -63,7 +64,7 @@ body{margin:0}
           </label>
           <label class="f wide" for="d-status">Estado
             <select class="in" id="d-status">
-              <option value="all">Todos</option><option value="in">Han entrado</option><option value="out">Pendientes de entrar</option>
+              <option value="all">Todos</option><option value="in">Han entrado</option><option value="out">Pendientes de entrar</option><option value="rej">Rechazados</option>
             </select>
           </label>
         </div>
@@ -135,6 +136,7 @@ body{margin:0}
 
 <div id="sheetRoot"></div>
 <div id="calRoot"></div>
+<div id="invRoot"></div>
 <div id="toastRoot"></div>
 <div class="tip" id="tip" hidden></div>
 <script src="app.js"></script>
