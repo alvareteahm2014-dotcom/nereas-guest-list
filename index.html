@@ -64,7 +64,7 @@ body{margin:0}
           </label>
           <label class="f wide" for="d-status">Estado
             <select class="in" id="d-status">
-              <option value="all">Todos</option><option value="in">Han entrado</option><option value="out">Pendientes de entrar</option><option value="rej">Rechazados</option>
+              <option value="all">Todos</option><option value="in">Han entrado</option><option value="out">Pendientes de entrar</option><option value="rej">Rechazados</option><option value="ns">Not show</option>
             </select>
           </label>
         </div>
@@ -117,11 +117,18 @@ body{margin:0}
       <div class="sub">Lo que te paga cada sala. Al apuntar gente en Listas solo eliges la discoteca y el resto se calcula solo.</div>
       <div id="clubsOut" class="stack"></div>
     </section>
+
+    <!-- PESTAÑA 4: INVOICES -->
+    <section id="view-inv" class="stack" role="tabpanel" aria-labelledby="tab-inv" hidden>
+      <div class="sub">Las invoices que vas creando. Toca el círculo cuando te la hayan pagado.</div>
+      <div class="sumbar" id="invSum"></div>
+      <div id="invOut" class="stack"></div>
+    </section>
   </main>
 </div>
 
 <nav class="tabs" role="tablist" aria-label="Secciones">
-  <div class="tabs-in" style="grid-template-columns:repeat(3,1fr)">
+  <div class="tabs-in" style="grid-template-columns:repeat(4,1fr)">
     <button class="tab" role="tab" id="tab-dash" data-tab="dash" aria-selected="true" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Dashboard
     </button>
@@ -130,6 +137,9 @@ body{margin:0}
     </button>
     <button class="tab" role="tab" id="tab-clubs" data-tab="clubs" aria-selected="false" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/></svg>Discotecas
+    </button>
+    <button class="tab" role="tab" id="tab-inv" data-tab="inv" aria-selected="false" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7"/></svg>Invoices
     </button>
   </div>
 </nav>

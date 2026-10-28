@@ -236,3 +236,9 @@ ol.toplist li:first-child{border-top:0}
 .invview{position:fixed;inset:0;z-index:60;background:#e9e9ec;overflow:auto;padding:0 12px 24px}
 .invbar{position:sticky;top:0;z-index:2;display:flex;gap:8px;flex-wrap:wrap;padding:10px 0;background:#e9e9ec}
 @media print{body>*:not(#invRoot){display:none!important}.invview{position:static;background:#fff;overflow:visible;padding:0}.invbar{display:none}}
+.person.ns .ring{border-color:var(--s2);color:var(--s2)}
+.person.ns .ring svg{display:none}
+.person.ns .ring::after{content:"\2014";font-size:15px;font-weight:800}
+
+/* v6: pestaña invoices, 4 pestañas */
+.tabs-in .tab{flex-direction:column;gap:2px;font-size:12px;padding:4px 2px;min-height:54px}

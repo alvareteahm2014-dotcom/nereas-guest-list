@@ -192,6 +192,7 @@ function nightsRange(){
   if(P==='rango')return {a:DV.from||'0000-00-00',b:DV.to||'9999-99-99',label:'Rango elegido'};
   return {a:'0000-00-00',b:'9999-99-99',label:'Todo el histórico'};
 }
+function statusOf(e){return e.entered?'in':e.rejected?'rej':e.date<nightDate()?'ns':'pend'}
 function dFiltered(){
   var r=nightsRange();
   return S.entries.filter(function(e){
@@ -199,7 +200,8 @@ function dFiltered(){
     if(DV.club!=='all'&&e.clubId!==DV.club)return false;
     if(DV.type!=='all'&&e.type!==DV.type)return false;
     if(DV.status==='in'&&!e.entered)return false;
-    if(DV.status==='out'&&(e.entered||e.rejected))return false;
+    if(DV.status==='out'&&statusOf(e)!=='pend')return false;
+    if(DV.status==='ns'&&statusOf(e)!=='ns')return false;
     if(DV.status==='rej'&&!e.rejected)return false;
     return true;
   });
@@ -222,7 +224,7 @@ function totals(list,useBonus){
         pr.total+=p;pr.n++;
         if(!e.paid){pr.pend+=p;t.retPend+=p}
       }
-    }else if(e.rejected){t.rej=(t.rej||0)+h}else{t.prevGen+=a;t.prevRet+=p}
+    }else if(e.rejected){t.rej=(t.rej||0)+h}else if(statusOf(e)==='ns'){t.ns=(t.ns||0)+h}else{t.prevGen+=a;t.prevRet+=p}
     var bk=e.clubId+'|'+e.date;
     if(BM[bk]&&!seen[bk]){seen[bk]=1;t.gen+=BM[bk];t.bonus+=BM[bk];c.gen+=BM[bk];c.bonus+=BM[bk]}
   });
@@ -233,15 +235,19 @@ function totals(list,useBonus){
 function topLists(){
   var r=nightsRange(),G={},C={};
   S.entries.forEach(function(e){
-    if(!e.entered||e.date<r.a||e.date>r.b)return;
+    if(e.date<r.a||e.date>r.b||isHostEntry(e))return;
     if(DV.club!=='all'&&e.clubId!==DV.club)return;
+    var st=statusOf(e);if(st==='pend')return;
     var k=pkey(e.name),M=e.type==='mesa'?C:G;
-    var x=M[k]||(M[k]={name:e.name,people:0,visits:0,spend:0,fee:0,last:''});
-    x.people+=heads(e);x.visits++;x.fee+=amt(e);if(hasNum(e.spend))x.spend+=+e.spend;
+    var x=M[k]||(M[k]={name:e.name,people:0,visits:0,spend:0,fee:0,last:'',rej:0,ns:0});
+    if(st==='in'){x.people+=heads(e);x.visits++;x.fee+=amt(e);if(hasNum(e.spend))x.spend+=+e.spend}
+    else if(st==='rej')x.rej++;else x.ns++;
     if(e.date>x.last){x.last=e.date;x.name=e.name}
   });
-  function arr(M,f){return Object.keys(M).map(function(k){return M[k]}).sort(f).slice(0,10)}
+  function arr(M,f,w){return Object.keys(M).map(function(k){return M[k]}).filter(function(x){return w?x.rej+x.ns>0:x.visits>0}).sort(f).slice(0,10)}
+  function bad(a,b){return (b.rej+b.ns)-(a.rej+a.ns)||b.rej-a.rej||a.name.localeCompare(b.name)}
   return {
+    badGuests:arr(G,bad,1),badClients:arr(C,bad,1),
     guests:arr(G,function(a,b){return b.people-a.people||b.visits-a.visits||a.name.localeCompare(b.name)}),
     clients:arr(C,function(a,b){return b.visits-a.visits||b.spend-a.spend||b.people-a.people||a.name.localeCompare(b.name)})
   };
@@ -251,10 +257,10 @@ function topCard(title,sub,rows,kind){
   if(!rows.length)return h+'<div class="empty" style="padding:18px 8px">Sin datos en este periodo.</div></div>';
   h+='<ol class="toplist">';
   rows.forEach(function(x,i){
-    var line=kind==='g'?plural(x.visits,'visita','visitas')+(x.visits>1?' · repite':'')
+    var line=kind==='bg'||kind==='bc'?(x.rej?plural(x.rej,'rechazo','rechazos'):'')+(x.rej&&x.ns?' · ':'')+(x.ns?x.ns+' not show':'')+(x.visits?' · '+plural(x.visits,'entrada','entradas'):''):kind==='g'?plural(x.visits,'visita','visitas')+(x.visits>1?' · repite':'')
       :plural(x.visits,'mesa','mesas')+' · '+plural(x.people,'persona','personas')+(x.spend>0?' · consumo '+eur(x.spend):'');
-    var val=kind==='g'?'<b class="num">'+x.people+'</b><span>personas</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'mesa':'mesas')+'</span>';
-    h+='<li><span class="rk num">'+(kind==='g'&&i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="tn">'+(kind==='c'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
+    var val=kind==='bg'||kind==='bc'?'<b class="num">'+(x.rej+x.ns)+'</b><span>veces</span>':kind==='g'?'<b class="num">'+x.people+'</b><span>personas</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'mesa':'mesas')+'</span>';
+    h+='<li><span class="rk num">'+(kind==='g'&&i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="tn">'+(kind==='c'||kind==='bc'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
   });
   return h+'</ol></div>';
 }
@@ -343,7 +349,7 @@ function renderDash(){
   if(!S.clubs.length){
     out.innerHTML='<div class="card empty"><b>Aún no hay discotecas</b>Añade la primera en la pestaña Discotecas para empezar a apuntar guests.</div>';return;
   }
-  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'&&DV.status!=='rej'),lab=nightsRange().label;
+  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'&&DV.status!=='rej'&&DV.status!=='ns'),lab=nightsRange().label;
   var h='';
   if(!list.length){
     h+='<div class="card empty"><b>Nada que mostrar</b>No hay guests con estos filtros. Prueba otro periodo o apunta gente en la pestaña Listas.</div>';
@@ -357,12 +363,18 @@ function renderDash(){
      +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> si entran los pendientes</span>':'')+'</div></div>';
     h+='<div class="tiles">'
      +'<div class="tile"><div class="v num">'+t.heads+'</div><div class="l">Apuntados</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
-     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Han entrado</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0))+' pendientes'+(t.rej?' · '+t.rej+' rechazados':'')+'</div></div>'
+     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Han entrado</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0)-(t.ns||0))+' pendientes'+(t.rej?' · '+t.rej+' rechazados':'')+(t.ns?' · '+t.ns+' not show':'')+'</div></div>'
      +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entrada</div><div class="d">de lo apuntado</div></div></div>';
   }
-  var tp=topLists();
-  h+=topCard('🏆 Top 10 guests','Quién ha llevado más gente y cuántas veces repite · '+esc(lab),tp.guests,'g');
-  h+=topCard('Top 10 clientes','Los que vienen con mesa · '+esc(lab),tp.clients,'c');
+  var tp=topLists(),wr=DV.rank==='worst';
+  h+='<div class="chips" role="group" aria-label="Ranking"><button class="chip" type="button" data-rank="best" aria-pressed="'+(!wr)+'">🏆 Mejores</button><button class="chip" type="button" data-rank="worst" aria-pressed="'+wr+'">🙅 Peores</button></div>';
+  if(wr){
+    h+=topCard('🙅 Top 10 peores guests','Los que más veces han sido rechazados o no han venido · '+esc(lab),tp.badGuests,'bg');
+    h+=topCard('🙅 Top 10 peores clientes','Mesas rechazadas o que no han venido · '+esc(lab),tp.badClients,'bc');
+  }else{
+    h+=topCard('🏆 Top 10 guests','Quién ha llevado más gente y cuántas veces repite · '+esc(lab),tp.guests,'g');
+    h+=topCard('Top 10 clientes','Los que vienen con mesa · '+esc(lab),tp.clients,'c');
+  }
   h+=monthsHtml();
 
   var days=Object.keys(t.days).sort().slice(-14);
@@ -431,6 +443,7 @@ function bindDash(){
   $('#d-from').onchange=function(){DV.from=this.value;renderDashFilters();renderDash()};
   $('#d-to').onchange=function(){DV.to=this.value;renderDashFilters();renderDash()};
   $('#dashOut').addEventListener('click',function(ev){
+    var rk=ev.target.closest('[data-rank]');if(rk){DV.rank=rk.dataset.rank;renderDash();return}
     var p=ev.target.closest('[data-act="paid"]');if(p){markPaid(p.dataset.prom);return}
     var more=ev.target.closest('[data-more]');
     if(more){DV.moreMonths=!DV.moreMonths;renderDash();return}
@@ -516,11 +529,12 @@ function renderLists(){
     return;
   }
   var list=dayEntries(),c=club(LV.club);
-  var tot=0,inn=0,mesas=0,rej=0;
-  list.forEach(function(e){tot+=heads(e);if(e.rejected)rej+=heads(e);if(e.entered){inn+=heads(e);if(e.type==='mesa')mesas++}});
+  var tot=0,inn=0,mesas=0,rej=0,ns=0;
+  list.forEach(function(e){tot+=heads(e);if(e.rejected)rej+=heads(e);if(statusOf(e)==='ns')ns+=heads(e);if(e.entered){inn+=heads(e);if(e.type==='mesa')mesas++}});
   var s='<span><b class="num">'+inn+'</b> de '+tot+' dentro</span>';
   if(mesas)s+='<span>⭐ <b class="num">'+mesas+'</b></span>';
   if(rej)s+='<span>🚫 <b class="num">'+rej+'</b> rechazados</span>';
+  if(ns)s+='<span style="color:var(--s2)"><b class="num">'+ns+'</b> not show</span>';
   if(c&&c.bonusEvery>0&&c.bonusAmount>0){
     var got=Math.floor(inn/c.bonusEvery)*c.bonusAmount,left=c.bonusEvery-(inn%c.bonusEvery);
     s+='<span>Bonus <b class="num">'+esc(eur(got))+'</b> · faltan '+left+' para el siguiente</span>';
@@ -533,12 +547,13 @@ function renderLists(){
   var h='<div class="card" style="padding:4px 14px"><ul class="list">';
   list.forEach(function(e){
     var pr=profileOf(e.name),d=pr&&pr.desc;
-    h+='<li class="person'+(e.entered?' in':'')+(e.rejected?' rej':'')+'">'
+    h+='<li class="person'+(e.entered?' in':'')+(e.rejected?' rej':'')+(statusOf(e)==='ns'?' ns':'')+'">'
       +'<button class="row-main" type="button" data-act="toggle" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.entered)+'" aria-label="'+esc(e.name)+': '+(e.entered?'ha entrado':'pendiente')+'">'
       +'<span class="ring">'+ICON_CHECK+'</span>'
       +'<span><span class="nm">'+(e.type==='mesa'?'<span aria-label="mesa">⭐</span>':'')+'<span>'+esc(e.name)+'</span>'+pillsFor(e)
       +(hasNum(e.extra)&&+e.extra>0?'<span class="tag" style="color:var(--s3)">Host '+esc(eur(+e.extra))+'</span>':'')
       +(e.rejected?'<span class="tag" style="color:var(--crit)">Rechazado</span>':'')
+      +(statusOf(e)==='ns'?'<span class="tag" style="color:var(--s2)">Not show</span>':'')
       +(e.type==='pago'?'<span class="tag" style="color:var(--s2)">PAGO'+(e.promoter?' · '+esc(e.promoter):'')+'</span>':'')+'</span>'
       +(d?'<span class="desc" style="display:block;white-space:pre-line">'+linkify(d)+'</span>':'')
       +'</span></button>'
@@ -715,7 +730,8 @@ function isHostEntry(e){return hasNum(e.extra)&&+e.extra>0&&String(e.name).trim(
 function fmtEn(s){return parse(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}
 function fmtEnD(s){return parse(s).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
 function lines(t){return esc(t||'').replace(/\n/g,'<br>')}
-var IV={open:false,from:'',to:'',view:null};
+var IV={open:false,from:'',to:'',view:null,rec:null};
+var IT={edit:null,del:null};
 var INV_CSS='.invdoc{background:#fff;color:#111;max-width:760px;margin:12px auto;padding:34px 30px;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;border-radius:6px;box-shadow:0 2px 14px rgba(0,0,0,.18)}'
 +'.invdoc h1{margin:0;font-size:30px;letter-spacing:.06em;font-weight:800}'
 +'.invdoc .ihead{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}'
@@ -785,6 +801,14 @@ function invList(){
 function renderInv(){
   var root=$('#invRoot');
   if(!IV.open){root.innerHTML='';return}
+  if(IV.rec){
+    var rc=invRec(IV.rec);
+    if(!rc){IV.rec=null;IV.open=false;root.innerHTML='';return}
+    root.innerHTML='<div class="invview"><div class="invbar"><button type="button" class="btn ghost small" data-iv="back">‹ Cerrar</button>'
+      +'<button type="button" class="btn small" data-iv="print">Imprimir / PDF</button><button type="button" class="btn ghost small" data-iv="save">Guardar archivo</button></div>'
+      +'<style>'+INV_CSS+'</style>'+rc.html+'</div>';
+    return;
+  }
   if(IV.view){
     var L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
     root.innerHTML='<div class="invview"><div class="invbar"><button type="button" class="btn ghost small" data-iv="back">‹ Volver</button>'
@@ -829,9 +853,9 @@ function openInv(){
   IV.open=true;IV.view=null;renderInv();
 }
 function invFile(){
-  var L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
-  var body=L.map(function(x){return invoiceHtml(x.c,IV.from,IV.to,x.d)}).join('');
-  var name=IV.view==='all'?'Invoices-'+IV.from+'_'+IV.to:'Invoice-'+(L[0]?invNo(L[0].c,IV.to):'')+'';
+  var rc=IV.rec&&invRec(IV.rec),L=rc?[]:invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
+  var body=rc?rc.html:L.map(function(x){return invoiceHtml(x.c,IV.from,IV.to,x.d)}).join('');
+  var name=rc?'Invoice-'+rc.no:IV.view==='all'?'Invoices-'+IV.from+'_'+IV.to:'Invoice-'+(L[0]?invNo(L[0].c,IV.to):'')+'';
   var html='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(name)+'</title><style>body{margin:0;background:#e9e9ec}'+INV_CSS+'</style></head><body>'+body+'</body></html>';
   return {name:name+'.html',html:html};
 }
@@ -851,8 +875,8 @@ function invSave(){
   }catch(e){toast('No se pudo guardar el archivo.')}
 }
 function invPrint(){
-  var old=document.title,L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
-  document.title=IV.view==='all'?'Invoices '+IV.from+' '+IV.to:(L[0]?invNo(L[0].c,IV.to):old);
+  var old=document.title,rc=IV.rec&&invRec(IV.rec),L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
+  document.title=rc?rc.no:IV.view==='all'?'Invoices '+IV.from+' '+IV.to:(L[0]?invNo(L[0].c,IV.to):old);
   var back=function(){document.title=old;window.removeEventListener('afterprint',back)};
   window.addEventListener('afterprint',back);
   try{window.print()}catch(e){document.title=old;toast('No se pudo abrir la impresión. Usa Guardar archivo.')}
@@ -883,7 +907,52 @@ function augmentClubs(out){
       +bf(id,'taxId','VAT / Company no. (opcional)',b.taxId)+bf(id,'ref','Referencia / PO (opcional)',b.ref)+'</div></details>');
   });
 }
+/* pestaña Invoices: se guardan al crearlas y se marca cuando te las pagan */
+function invs(){return S.invoices||(S.invoices=[])}
+function invRec(id){return invs().filter(function(r){return r.id===id})[0]}
+function saveInvoices(which){
+  var today=nightDate(),n=0;
+  invList().filter(function(x){return which==='all'||x.c.id===which}).forEach(function(x){
+    var html=invoiceHtml(x.c,IV.from,IV.to,x.d),no=invNo(x.c,IV.to),total=x.d.sub*(1+(+me().vat||0)/100);
+    var ex=invs().filter(function(r){return r.clubId===x.c.id&&r.from===IV.from&&r.to===IV.to})[0];
+    if(ex){if(!ex.paid){ex.html=html;ex.no=no;ex.total=total;ex.clubName=x.c.name}}
+    else{invs().push({id:uid(),clubId:x.c.id,clubName:x.c.name,no:no,from:IV.from,to:IV.to,created:today,total:total,paid:false,paidDate:'',html:html});n++}
+  });
+  save();
+  toast(n?'Guardada en la pestaña Invoices.':'Ya estaba en Invoices.');
+}
+function renderInvTab(){
+  var out=$('#invOut'),sum=$('#invSum');if(!out)return;
+  var L=invs().slice().sort(function(a,b){return b.created.localeCompare(a.created)||b.to.localeCompare(a.to)||a.clubName.localeCompare(b.clubName)});
+  var pend=0,got=0;L.forEach(function(r){if(r.paid)got+=r.total;else pend+=r.total});
+  sum.innerHTML=L.length?'<span>Pendiente de cobro <b class="num" style="color:var(--s2)">'+esc(eur(pend))+'</b></span><span>Cobrado <b class="num" style="color:var(--good-text)">'+esc(eur(got))+'</b></span>':'';
+  if(!L.length){out.innerHTML='<div class="card empty"><b>Aún no hay invoices</b>Créalas desde el Dashboard (Crear invoice) y se guardarán aquí para marcar cuándo te las pagan.</div>';return}
+  var h='<div class="card" style="padding:4px 14px"><ul class="list">';
+  L.forEach(function(r){
+    var id=esc(r.id);
+    h+='<li class="person'+(r.paid?' in':'')+'"><button class="row-main" type="button" data-ia="paid" data-id="'+id+'" aria-pressed="'+(!!r.paid)+'" aria-label="'+esc(r.clubName)+': '+(r.paid?'pagada':'pendiente de pago')+'">'
+      +'<span class="ring">'+ICON_CHECK+'</span><span><span class="nm"><span>'+esc(r.clubName)+'</span><span class="tag">'+esc(eur(r.total))+'</span>'
+      +(r.paid?'<span class="tag" style="color:var(--good-text)">Pagada'+(r.paidDate?' · '+esc(fmtShort(r.paidDate)):'')+'</span>':'<span class="tag" style="color:var(--s2)">Pendiente</span>')+'</span>'
+      +'<span class="desc" style="display:block">Creada el '+esc(fmtEn(r.created))+' · '+esc(fmtEn(r.from))+' – '+esc(fmtEn(r.to))+'<br>'+esc(r.no)+'</span></span></button>'
+      +'<button class="rejbtn" type="button" data-ia="view" data-id="'+id+'" aria-label="Ver invoice de '+esc(r.clubName)+'">📄</button>'
+      +'<button class="dots" type="button" data-ia="edit" data-id="'+id+'" aria-label="Más opciones">⋯</button>';
+    if(IT.edit===r.id)h+='<div class="edit"><div class="actions"><button class="btn ghost small" type="button" data-ia="close">Cerrar</button>'
+      +(IT.del===r.id?'<button class="btn danger small" type="button" data-ia="del2" data-id="'+id+'">Sí, eliminar</button>':'<button class="btn ghost small" type="button" data-ia="del" data-id="'+id+'">Eliminar</button>')+'</div></div>';
+    h+='</li>';
+  });
+  out.innerHTML=h+'</ul></div>';
+}
 function bindInvoice(){
+  $('#invOut').addEventListener('click',function(ev){
+    var b=ev.target.closest('[data-ia]');if(!b)return;
+    var a=b.dataset.ia,r=b.dataset.id?invRec(b.dataset.id):null;
+    if(a==='paid'&&r){r.paid=!r.paid;r.paidDate=r.paid?nightDate():'';save();renderInvTab()}
+    else if(a==='view'&&r){IV.rec=r.id;IV.open=true;renderInv()}
+    else if(a==='edit'&&r){IT.edit=IT.edit===r.id?null:r.id;IT.del=null;renderInvTab()}
+    else if(a==='close'){IT.edit=null;IT.del=null;renderInvTab()}
+    else if(a==='del'){IT.del=b.dataset.id;renderInvTab()}
+    else if(a==='del2'&&r){var before=snap();S.invoices=invs().filter(function(x){return x.id!==r.id});IT.edit=null;IT.del=null;save();renderInvTab();toast('Invoice eliminada.',function(){restoreSnap(before)})}
+  });
   $('#btnInvoice').onclick=openInv;
   $('#invRoot').addEventListener('click',function(ev){
     if(ev.target.id==='ivScrim'){IV.open=false;renderInv();return}
@@ -891,9 +960,9 @@ function bindInvoice(){
     var a=b.dataset.iv;
     if(a==='close'){IV.open=false;renderInv()}
     else if(a.indexOf('p-')===0){invSetRange(a.slice(2));renderInv()}
-    else if(a==='view'){IV.view=b.dataset.cid;renderInv();$('#invRoot').firstChild.scrollTop=0}
-    else if(a==='all'){IV.view='all';renderInv();$('#invRoot').firstChild.scrollTop=0}
-    else if(a==='back'){IV.view=null;renderInv()}
+    else if(a==='view'){IV.view=b.dataset.cid;saveInvoices(IV.view);renderInv();$('#invRoot').firstChild.scrollTop=0}
+    else if(a==='all'){IV.view='all';saveInvoices('all');renderInv();$('#invRoot').firstChild.scrollTop=0}
+    else if(a==='back'){if(IV.rec){IV.rec=null;IV.open=false}else IV.view=null;renderInv()}
     else if(a==='print')invPrint();
     else if(a==='save')invSave();
   });
@@ -909,7 +978,7 @@ function bindInvoice(){
     o[k]=v;if(t.type==='number')t.value=v;
     delete (club(sc)||{}).demo;save();
   });
-  document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&IV.open){if(IV.view){IV.view=null}else IV.open=false;renderInv()}});
+  document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&IV.open){if(IV.rec){IV.rec=null;IV.open=false}else if(IV.view){IV.view=null}else IV.open=false;renderInv()}});
 }
 
 /* =========================== AJUSTES, COPIA, ARRANQUE =========================== */
@@ -1053,19 +1122,20 @@ function renderBanners(){
 
 var TAB='dash';
 function setTab(name){
-  TAB=name==='lists'||name==='clubs'?name:'dash';
+  TAB=name==='lists'||name==='clubs'||name==='inv'?name:'dash';
   $('#view-dash').hidden=TAB!=='dash';
   $('#view-lists').hidden=TAB!=='lists';
   $('#view-clubs').hidden=TAB!=='clubs';
+  $('#view-inv').hidden=TAB!=='inv';
   $$('.tab').forEach(function(b){b.setAttribute('aria-selected',String(b.dataset.tab===TAB))});
   try{localStorage.setItem('nereas-guest-list.tab',TAB)}catch(e){}
-  if(TAB==='dash')renderDash();else if(TAB==='lists')renderLists();else renderClubs();
+  if(TAB==='dash')renderDash();else if(TAB==='lists')renderLists();else if(TAB==='inv')renderInvTab();else renderClubs();
 }
 function renderAll(){
   renderBanners();
   $('#sub').textContent=fmtLong(nightDate());
   renderDashFilters();renderForm();
-  if(TAB==='dash')renderDash();else if(TAB==='lists')renderLists();else renderClubs();
+  if(TAB==='dash')renderDash();else if(TAB==='lists')renderLists();else if(TAB==='inv')renderInvTab();else renderClubs();
 }
 
 /* ---------- arranque ---------- */
@@ -1073,7 +1143,7 @@ try{localStorage.setItem('nereas-guest-list.probe','1');localStorage.removeItem(
 S=load()||demoData();
 save();
 bindDash();bindLists();bindClubs();bindShell();bindInvoice();
-try{var tb=localStorage.getItem('nereas-guest-list.tab');TAB=tb==='lists'||tb==='clubs'?tb:'dash'}catch(e){}
+try{var tb=localStorage.getItem('nereas-guest-list.tab');TAB=tb==='lists'||tb==='clubs'||tb==='inv'?tb:'dash'}catch(e){}
 renderAll();
 setTab(TAB);
 try{
