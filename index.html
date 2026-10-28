@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -27,44 +27,44 @@ body{margin:0}
     <div class="brand">Nerea’s Guest List<small id="sub"></small></div>
     <button class="icon-btn" id="btnClubs" type="button" aria-haspopup="dialog">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
-      Ajustes
+      Settings
     </button>
   </header>
 
   <div id="banners" class="stack" style="margin-bottom:14px"></div>
 
   <main>
-    <!-- PESTAÑA 1: DASHBOARD -->
+    <!-- TAB 1: DASHBOARD -->
     <section id="view-dash" class="stack" role="tabpanel" aria-labelledby="tab-dash">
-      <button class="btn" id="btnInvoice" type="button" style="width:100%">🧾 Crear invoice</button>
+      <button class="btn" id="btnInvoice" type="button" style="width:100%">🧾 Create invoice</button>
       <div class="card stack" style="gap:12px">
-        <div class="chips" id="periodChips" role="group" aria-label="Periodo">
-          <button class="chip" type="button" data-p="hoy" aria-pressed="false">Noche</button>
-          <button class="chip" type="button" data-p="sem" aria-pressed="true">Semana</button>
-          <button class="chip" type="button" data-p="mes" aria-pressed="false">Mes</button>
-          <button class="chip" type="button" data-p="anio" aria-pressed="false">Año</button>
-          <button class="chip" type="button" data-p="todo" aria-pressed="false">Todo</button>
-          <button class="chip" type="button" data-p="rango" aria-pressed="false">Rango</button>
+        <div class="chips" id="periodChips" role="group" aria-label="Period">
+          <button class="chip" type="button" data-p="hoy" aria-pressed="false">Night</button>
+          <button class="chip" type="button" data-p="sem" aria-pressed="true">Week</button>
+          <button class="chip" type="button" data-p="mes" aria-pressed="false">Month</button>
+          <button class="chip" type="button" data-p="anio" aria-pressed="false">Year</button>
+          <button class="chip" type="button" data-p="todo" aria-pressed="false">All</button>
+          <button class="chip" type="button" data-p="rango" aria-pressed="false">Range</button>
         </div>
         <div class="daynav" id="periodNav">
-          <button type="button" id="pPrev" aria-label="Periodo anterior">‹</button>
+          <button type="button" id="pPrev" aria-label="Previous period">‹</button>
           <div class="date" id="pLabel"></div>
-          <button type="button" id="pNext" aria-label="Periodo siguiente">›</button>
+          <button type="button" id="pNext" aria-label="Next period">›</button>
         </div>
         <div class="grid2" id="rangeRow" hidden>
-          <label class="f" for="d-from">Desde<input class="in" type="date" id="d-from"></label>
-          <label class="f" for="d-to">Hasta<input class="in" type="date" id="d-to"></label>
+          <label class="f" for="d-from">From<input class="in" type="date" id="d-from"></label>
+          <label class="f" for="d-to">To<input class="in" type="date" id="d-to"></label>
         </div>
         <div class="filters">
-          <label class="f" for="d-club">Discoteca<select class="in" id="d-club"></select></label>
-          <label class="f" for="d-type">Tipo
+          <label class="f" for="d-club">Venue<select class="in" id="d-club"></select></label>
+          <label class="f" for="d-type">Type
             <select class="in" id="d-type">
-              <option value="all">Todos</option><option value="lista">Lista</option><option value="mesa">⭐ Mesa</option><option value="pago">PAGO</option>
+              <option value="all">All</option><option value="lista">List</option><option value="mesa">⭐ Table</option><option value="pago">Referral</option>
             </select>
           </label>
-          <label class="f wide" for="d-status">Estado
+          <label class="f wide" for="d-status">Status
             <select class="in" id="d-status">
-              <option value="all">Todos</option><option value="in">Han entrado</option><option value="out">Pendientes de entrar</option><option value="rej">Rechazados</option><option value="ns">Not show</option>
+              <option value="all">All</option><option value="in">Got in</option><option value="out">Pending</option><option value="rej">Rejected</option><option value="ns">Not show</option>
             </select>
           </label>
         </div>
@@ -72,39 +72,39 @@ body{margin:0}
       <div id="dashOut" class="stack"></div>
     </section>
 
-    <!-- PESTAÑA 2: LISTAS -->
+    <!-- TAB 2: LISTS -->
     <section id="view-lists" class="stack" role="tabpanel" aria-labelledby="tab-lists" hidden>
       <div class="daynav">
-        <button type="button" id="dayPrev" aria-label="Noche anterior">‹</button>
+        <button type="button" id="dayPrev" aria-label="Previous night">‹</button>
         <div class="date" id="dayLabel"></div>
-        <button type="button" id="dayNext" aria-label="Noche siguiente">›</button>
+        <button type="button" id="dayNext" aria-label="Next night">›</button>
       </div>
-      <select class="in" id="clubSel" aria-label="Discoteca"></select>
+      <select class="in" id="clubSel" aria-label="Venue"></select>
       <div class="sumbar" id="sumBar"></div>
 
       <form class="card addcard" id="addForm" autocomplete="off">
-        <div class="seg" role="group" aria-label="Tipo">
-          <input type="radio" name="f-type" id="t-lista" value="lista" checked><label for="t-lista"><span class="dot"></span>Lista</label>
-          <input type="radio" name="f-type" id="t-mesa" value="mesa"><label for="t-mesa">⭐ Mesa</label>
-          <input type="radio" name="f-type" id="t-pago" value="pago"><label for="t-pago"><span class="dot pago"></span>PAGO</label>
+        <div class="seg" role="group" aria-label="Type">
+          <input type="radio" name="f-type" id="t-lista" value="lista" checked><label for="t-lista"><span class="dot"></span>List</label>
+          <input type="radio" name="f-type" id="t-mesa" value="mesa"><label for="t-mesa">⭐ Table</label>
+          <input type="radio" name="f-type" id="t-pago" value="pago"><label for="t-pago"><span class="dot pago"></span>Referral</label>
         </div>
         <div class="rel">
-          <input class="in" id="f-name" type="text" placeholder="Nombre del guest" autocapitalize="words" aria-label="Nombre del guest">
+          <input class="in" id="f-name" type="text" placeholder="Guest name" autocapitalize="words" aria-label="Guest name">
           <div class="sugg" id="sugg" hidden></div>
         </div>
         <div class="addline2">
-          <label class="f cnt f-g" for="f-f"><span>Chicas</span><input class="in num" id="f-f" type="number" inputmode="numeric" min="0" value="0"></label>
-          <label class="f cnt f-b" for="f-m"><span>Chicos</span><input class="in num" id="f-m" type="number" inputmode="numeric" min="0" value="0"></label>
-          <button class="btn" type="submit" id="btnAdd">Añadir</button>
+          <label class="f cnt f-g" for="f-f"><span>Girls</span><input class="in num" id="f-f" type="number" inputmode="numeric" min="0" value="0"></label>
+          <label class="f cnt f-b" for="f-m"><span>Guys</span><input class="in num" id="f-m" type="number" inputmode="numeric" min="0" value="0"></label>
+          <button class="btn" type="submit" id="btnAdd">Add</button>
         </div>
-        <div class="hosts" role="group" aria-label="Host con extra">
+        <div class="hosts" role="group" aria-label="Host with fee">
           <button class="hostbtn" type="button" data-host="200">Host 200</button>
           <button class="hostbtn" type="button" data-host="250">Host 250</button>
           <button class="hostbtn" type="button" data-host="300">Host 300</button>
         </div>
         <div class="hint" id="hint"></div>
         <div id="f-pago" hidden>
-          <input class="in" id="f-promoter" list="promoters" type="text" placeholder="Promotor que lo envía" aria-label="Promotor que lo envía">
+          <input class="in" id="f-promoter" list="promoters" type="text" placeholder="Referring promoter" aria-label="Referring promoter">
           <datalist id="promoters"></datalist>
         </div>
       </form>
@@ -112,31 +112,31 @@ body{margin:0}
       <div id="listOut" class="stack"></div>
     </section>
 
-    <!-- PESTAÑA 3: DISCOTECAS -->
+    <!-- TAB 3: VENUES -->
     <section id="view-clubs" class="stack" role="tabpanel" aria-labelledby="tab-clubs" hidden>
-      <div class="sub">Lo que te paga cada sala. Al apuntar gente en Listas solo eliges la discoteca y el resto se calcula solo.</div>
+      <div class="sub">What each venue pays you. When you log people in Lists you only pick the venue and the rest is calculated for you.</div>
       <div id="clubsOut" class="stack"></div>
     </section>
 
-    <!-- PESTAÑA 4: INVOICES -->
+    <!-- TAB 4: INVOICES -->
     <section id="view-inv" class="stack" role="tabpanel" aria-labelledby="tab-inv" hidden>
-      <div class="sub">Las invoices que vas creando. Toca el círculo cuando te la hayan pagado.</div>
+      <div class="sub">The invoices you create. Tap the circle once one has been paid.</div>
       <div class="sumbar" id="invSum"></div>
       <div id="invOut" class="stack"></div>
     </section>
   </main>
 </div>
 
-<nav class="tabs" role="tablist" aria-label="Secciones">
+<nav class="tabs" role="tablist" aria-label="Sections">
   <div class="tabs-in" style="grid-template-columns:repeat(4,1fr)">
     <button class="tab" role="tab" id="tab-dash" data-tab="dash" aria-selected="true" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Dashboard
     </button>
     <button class="tab" role="tab" id="tab-lists" data-tab="lists" aria-selected="false" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Listas
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Lists
     </button>
     <button class="tab" role="tab" id="tab-clubs" data-tab="clubs" aria-selected="false" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/></svg>Discotecas
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/></svg>Venues
     </button>
     <button class="tab" role="tab" id="tab-inv" data-tab="inv" aria-selected="false" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7"/></svg>Invoices

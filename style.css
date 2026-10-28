@@ -222,8 +222,8 @@ ol.toplist li:first-child{border-top:0}
 
 /* v5: rechazados, facturas */
 .person{grid-template-columns:1fr auto auto}
-.rejbtn{width:40px;height:56px;border:0;background:transparent;color:var(--muted);font-size:18px;font-weight:700;line-height:1}
-.rejbtn[aria-pressed="true"]{color:var(--crit)}
+.rejbtn{width:40px;height:56px;border:0;background:transparent;color:var(--crit);opacity:.55;font-size:18px;font-weight:700;line-height:1}
+.rejbtn[aria-pressed="true"]{color:var(--crit);opacity:1}
 .person.rej .ring{border-color:var(--crit);color:var(--crit)}
 .person.rej .ring svg{display:none}
 .person.rej .ring::after{content:"\2715";font-size:15px;font-weight:800}

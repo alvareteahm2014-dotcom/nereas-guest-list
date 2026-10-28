@@ -12,11 +12,11 @@ function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate
 function parse(s){var p=String(s).split('-');return new Date(+p[0],+p[1]-1,+p[2])}
 function addDays(s,n){var d=parse(s);d.setDate(d.getDate()+n);return iso(d)}
 function nightDate(){var d=new Date();if(d.getHours()<7)d.setDate(d.getDate()-1);return iso(d)}
-function fmtLong(s){return parse(s).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})}
+function fmtLong(s){return parse(s).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}
 function fmtShort(s){var p=s.split('-');return p[2]+'/'+p[1]}
-var DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+var DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function dayName(s){return DOW[parse(s).getDay()]+' '+s.slice(8)}
-function monthName(k){var p=k.split('-');var s=new Date(+p[0],+p[1]-1,1).toLocaleDateString('es-ES',{month:'long',year:'numeric'});return s.charAt(0).toUpperCase()+s.slice(1)}
+function monthName(k){var p=k.split('-');var s=new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});return s.charAt(0).toUpperCase()+s.slice(1)}
 function weekStart(s){var d=parse(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d)}
 
 /* ---------- estado y guardado ---------- */
@@ -69,7 +69,7 @@ function eur(n){n=n||0;var a=Math.abs(n),fr=Math.abs(a-Math.round(a))>0.004;retu
 function pkey(n){return norm(n)}
 function profileOf(name){return S.profiles[pkey(name)]}
 function visits(name){var k=pkey(name);return S.entries.filter(function(e){return pkey(e.name)===k}).length}
-function typeLabel(t){return t==='pago'?'PAGO':t==='mesa'?'⭐ Mesa':'Lista'}
+function typeLabel(t){return t==='pago'?'Referral':t==='mesa'?'⭐ Table':'List'}
 function promoters(){var m={};S.entries.forEach(function(e){if(e.type==='pago'&&e.promoter)m[e.promoter]=1});return Object.keys(m).sort()}
 function plural(n,one,many){return n+' '+(n===1?one:many)}
 
@@ -87,15 +87,15 @@ function parseQuick(text){
 }
 function countText(n,m,f){return (m||f)&&m+f===n?m+'+'+f:String(n)}
 function splitText(n,m,f){
-  if((m||f)&&m+f===n){var a=[];if(f)a.push(f+(f===1?' chica':' chicas'));if(m)a.push(m+(m===1?' chico':' chicos'));return a.join(' · ')}
-  return plural(n,'persona','personas');
+  if((m||f)&&m+f===n){var a=[];if(f)a.push(f+(f===1?' girl':' girls'));if(m)a.push(m+(m===1?' guy':' guys'));return a.join(' · ')}
+  return plural(n,'person','people');
 }
 function weekOfMonth(s){var d=parse(s),off=(new Date(d.getFullYear(),d.getMonth(),1).getDay()+6)%7;return Math.floor((d.getDate()-1+off)/7)+1}
-var MES3=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+var MES3=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function rangeLabel(a,b){var A=parse(a),B=parse(b);return A.getDate()+(A.getMonth()!==B.getMonth()?' '+MES3[A.getMonth()]:'')+' – '+B.getDate()+' '+MES3[B.getMonth()]}
 function peopleText(n,m,f){
-  if((m||f)&&m+f===n)return plural(n,'persona','personas')+' ('+plural(m,'chico','chicos')+' + '+plural(f,'chica','chicas')+')';
-  return plural(n,'persona','personas');
+  if((m||f)&&m+f===n)return plural(n,'person','people')+' ('+plural(m,'guy','guys')+' + '+plural(f,'girl','girls')+')';
+  return plural(n,'person','people');
 }
 function linkify(t){
   var h=esc(t);
@@ -136,18 +136,18 @@ function demoData(){
       entered:entered,amount:null,spend:type==='mesa'?300+(d.entries.length*53)%400:null,promoter:promoter||'',payout:null,paid:false,demo:true,ts:d.entries.length});
     if(!profileOf(q.name))upsertProfile(q.name,{clubId:clubId,type:type,n:q.n,m:q.m,f:q.f,desc:desc||'',demo:true});
   }
-  add(0,'c1','Lucía Ramos 6+3','lista',true,'','@lucia.ramos · chaqueta vaquera');
-  add(0,'c1','Carlos Pérez 3','lista',false,'','@carlospz · gorra negra');
-  add(0,'c1','Irene Soto 5+3','mesa',true,'','Cumpleaños, vestido rojo');
-  add(0,'c2','Pablo Medina 2+1','pago',true,'Jorge (RRPP)','Lo envía Jorge · camisa blanca');
+  add(0,'c1','Lucía Ramos 6+3','lista',true,'','@lucia.ramos · denim jacket');
+  add(0,'c1','Carlos Pérez 3','lista',false,'','@carlospz · black cap');
+  add(0,'c1','Irene Soto 5+3','mesa',true,'','Birthday, red dress');
+  add(0,'c2','Pablo Medina 2+1','pago',true,'Jorge (PR)','Sent by Jorge · white shirt');
   add(0,'c2','Sofía León 2','lista',false,'','@sofi.leon');
-  add(0,'c2','Marcos Gil 3','pago',false,'Álex','Lo envía Álex');
+  add(0,'c2','Marcos Gil 3','pago',false,'Álex','Sent by Álex');
   var pool=[['Paula Torres 4+2','lista'],['Rafa Cano 6','lista'],['Dani Ortiz 3+5','mesa'],['Marta Vidal 2+2','lista'],
     ['Elena Ruiz 5','pago'],['Hugo Sanz 4+1','lista'],['Sofía León 7+3','mesa'],['Iván Gil 2','lista']];
   var offs=[-1,-2,-3,-4,-5,-6,-8,-9,-15,-16,-22,-23,-29,-30,-36,-37,-43,-44,-50,-51,-57,-58];
   offs.forEach(function(o,i){
     var a=pool[(i*2)%8],b=pool[(i*2+1)%8];
-    add(o,'c1',a[0],a[1],true,a[1]==='pago'?'Jorge (RRPP)':'','');
+    add(o,'c1',a[0],a[1],true,a[1]==='pago'?'Jorge (PR)':'','');
     add(o,'c2',b[0],b[1],true,b[1]==='pago'?'Álex':'','');
   });
   return d;
@@ -164,14 +164,14 @@ function clearDemo(){
     else delete p.demo;
   });
   save();renderAll();
-  toast('Ejemplos borrados. Añade tu primera discoteca en la pestaña Discotecas.',function(){restoreSnap(before)});
+  toast('Sample data cleared. Add your first venue in the Venues tab.',function(){restoreSnap(before)});
 }
 
 /* ---------- aviso flotante ---------- */
 var toastT;
 function toast(msg,undo){
   var r=$('#toastRoot');
-  r.innerHTML='<div class="toast" role="status"><span>'+esc(msg)+'</span>'+(undo?'<button type="button" id="toastUndo">Deshacer</button>':'')+'</div>';
+  r.innerHTML='<div class="toast" role="status"><span>'+esc(msg)+'</span>'+(undo?'<button type="button" id="toastUndo">Undo</button>':'')+'</div>';
   if(undo)$('#toastUndo').onclick=function(){undo();r.innerHTML=''};
   clearTimeout(toastT);
   toastT=setTimeout(function(){r.innerHTML=''},undo?9000:2600);
@@ -186,11 +186,11 @@ var ICON_CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 function nightsRange(){
   var t=nightDate(),o=DV.off||0,P=DV.period;
   if(P==='hoy'){var d=addDays(t,o);return {a:d,b:d,label:fmtLong(d)}}
-  if(P==='sem'){var m=weekStart(addDays(t,7*o)),e=addDays(m,6);return {a:m,b:e,label:(o===0?'Esta semana · ':'Semana ')+rangeLabel(m,e)}}
+  if(P==='sem'){var m=weekStart(addDays(t,7*o)),e=addDays(m,6);return {a:m,b:e,label:(o===0?'This week · ':'Week ')+rangeLabel(m,e)}}
   if(P==='mes'){var p=parse(t),f=new Date(p.getFullYear(),p.getMonth()+o,1),l=new Date(f.getFullYear(),f.getMonth()+1,0);return {a:iso(f),b:iso(l),label:monthName(iso(f).slice(0,7))}}
-  if(P==='anio'){var y=parse(t).getFullYear()+o;return {a:y+'-01-01',b:y+'-12-31',label:'Año '+y}}
-  if(P==='rango')return {a:DV.from||'0000-00-00',b:DV.to||'9999-99-99',label:'Rango elegido'};
-  return {a:'0000-00-00',b:'9999-99-99',label:'Todo el histórico'};
+  if(P==='anio'){var y=parse(t).getFullYear()+o;return {a:y+'-01-01',b:y+'-12-31',label:'Year '+y}}
+  if(P==='rango')return {a:DV.from||'0000-00-00',b:DV.to||'9999-99-99',label:'Custom range'};
+  return {a:'0000-00-00',b:'9999-99-99',label:'All time'};
 }
 function statusOf(e){return e.entered?'in':e.rejected?'rej':e.date<nightDate()?'ns':'pend'}
 function dFiltered(){
@@ -219,7 +219,7 @@ function totals(list,useBonus){
       t.inHeads+=h;t.gen+=a;t.ret+=p;c.gen+=a;c.ret+=p;c.inH+=h;t.days[e.date]+=h;
       if(e.type==='mesa')t.mesas++;
       if(e.type==='pago'){
-        var k=e.promoter||'Sin indicar';
+        var k=e.promoter||'Unspecified';
         var pr=t.prom[k]||(t.prom[k]={total:0,pend:0,n:0});
         pr.total+=p;pr.n++;
         if(!e.paid){pr.pend+=p;t.retPend+=p}
@@ -254,12 +254,12 @@ function topLists(){
 }
 function topCard(title,sub,rows,kind){
   var h='<div class="card"><h2>'+title+'</h2><div class="sub">'+sub+'</div>';
-  if(!rows.length)return h+'<div class="empty" style="padding:18px 8px">Sin datos en este periodo.</div></div>';
+  if(!rows.length)return h+'<div class="empty" style="padding:18px 8px">No data in this period.</div></div>';
   h+='<ol class="toplist">';
   rows.forEach(function(x,i){
-    var line=kind==='bg'||kind==='bc'?(x.rej?plural(x.rej,'rechazo','rechazos'):'')+(x.rej&&x.ns?' · ':'')+(x.ns?x.ns+' not show':'')+(x.visits?' · '+plural(x.visits,'entrada','entradas'):''):kind==='g'?plural(x.visits,'visita','visitas')+(x.visits>1?' · repite':'')
-      :plural(x.visits,'mesa','mesas')+' · '+plural(x.people,'persona','personas')+(x.spend>0?' · consumo '+eur(x.spend):'');
-    var val=kind==='bg'||kind==='bc'?'<b class="num">'+(x.rej+x.ns)+'</b><span>veces</span>':kind==='g'?'<b class="num">'+x.people+'</b><span>personas</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'mesa':'mesas')+'</span>';
+    var line=kind==='bg'||kind==='bc'?(x.rej?plural(x.rej,'rejection','rejections'):'')+(x.rej&&x.ns?' · ':'')+(x.ns?x.ns+' not show':'')+(x.visits?' · '+plural(x.visits,'entry','entries'):''):kind==='g'?plural(x.visits,'visit','visits')+(x.visits>1?' · repeat':'')
+      :plural(x.visits,'table','tables')+' · '+plural(x.people,'person','people')+(x.spend>0?' · spend '+eur(x.spend):'');
+    var val=kind==='bg'||kind==='bc'?'<b class="num">'+(x.rej+x.ns)+'</b><span>times</span>':kind==='g'?'<b class="num">'+x.people+'</b><span>people</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'table':'tables')+'</span>';
     h+='<li><span class="rk num">'+(kind==='g'&&i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="tn">'+(kind==='c'||kind==='bc'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
   });
   return h+'</ol></div>';
@@ -297,9 +297,9 @@ function weeksOf(m){
   return order.map(function(n){return {n:n,net:wk[n].net,days:wk[n].days}});
 }
 function monthsHtml(){
-  var all=monthSummary(),cl=DV.club==='all'?'todas las discotecas':(club(DV.club)||{name:'esta discoteca'}).name;
-  var head='<h2>Resumen por meses</h2><div class="sub">Lo que te queda cada mes en '+esc(cl)+', con bonus y sin lo que pagas a otros promotores.</div>';
-  if(!all.length)return '<div class="card" id="monthsCard">'+head+'<div class="empty"><b>Aún no hay noches cerradas</b>Marca quién ha entrado en la pestaña Listas y aquí verás lo que llevas cada mes.</div></div>';
+  var all=monthSummary(),cl=DV.club==='all'?'all venues':(club(DV.club)||{name:'this venue'}).name;
+  var head='<h2>Monthly summary</h2><div class="sub">What you keep each month at '+esc(cl)+', including bonus and after referral payouts.</div>';
+  if(!all.length)return '<div class="card" id="monthsCard">'+head+'<div class="empty"><b>No closed nights yet</b>Tick who got in on the Lists tab and your monthly earnings will show up here.</div></div>';
   if(DV.openMonth===null||(DV.openMonth!==''&&!all.some(function(m){return m.key===DV.openMonth})))DV.openMonth=all[0].key;
   var shown=DV.moreMonths?all:all.slice(0,4);
   var max=Math.max.apply(null,all.map(function(m){return Math.max(m.net,0)}).concat([1]));
@@ -308,31 +308,31 @@ function monthsHtml(){
     var open=DV.openMonth===m.key,w=Math.max(0,m.net)/max*100;
     h+='<button class="mrow" type="button" data-m="'+esc(m.key)+'" aria-expanded="'+(open?'true':'false')+'">'
       +'<div class="mrow-top"><span class="mname">'+esc(monthName(m.key))+'</span><span class="mval num">'+esc(eur(m.net))+'</span></div>'
-      +'<div class="msub">'+plural(m.people,'persona','personas')+(m.mesas?' · ⭐ '+plural(m.mesas,'mesa','mesas'):'')+(m.bonus?' · bonus '+esc(eur(m.bonus)):'')+'</div>'
+      +'<div class="msub">'+plural(m.people,'person','people')+(m.mesas?' · ⭐ '+plural(m.mesas,'table','tables'):'')+(m.bonus?' · bonus '+esc(eur(m.bonus)):'')+'</div>'
       +'<div class="mbar" style="width:'+w.toFixed(1)+'%"></div></button>';
     if(open){
       h+='<div class="weeks">';
       var ids=Object.keys(m.clubs);
       if(ids.length>1){
-        h+='<div><div class="week-h"><span>Por discoteca</span></div>'
+        h+='<div><div class="week-h"><span>By venue</span></div>'
           +ids.sort(function(a,b){return m.clubs[b].net-m.clubs[a].net}).map(function(id){
-            var c=club(id);return '<div class="week-d"><span>'+esc(c?c.name:'Sin discoteca')+' · '+m.clubs[id].people+'</span><span class="num">'+esc(eur(m.clubs[id].net))+'</span></div>'}).join('')+'</div>';
+            var c=club(id);return '<div class="week-d"><span>'+esc(c?c.name:'No venue')+' · '+m.clubs[id].people+'</span><span class="num">'+esc(eur(m.clubs[id].net))+'</span></div>'}).join('')+'</div>';
       }
       weeksOf(m).forEach(function(wk){
-        h+='<div><div class="week-h"><span>Semana '+wk.n+'</span><span class="num">'+esc(eur(wk.net))+'</span></div>'
+        h+='<div><div class="week-h"><span>Week '+wk.n+'</span><span class="num">'+esc(eur(wk.net))+'</span></div>'
           +wk.days.map(function(d){return '<div class="week-d"><span>'+esc(dayName(d.date))+'</span><span class="num">'+esc(eur(d.net))+'</span></div>'}).join('')+'</div>';
       });
       h+='</div>';
     }
   });
   h+='</div>';
-  if(all.length>4)h+='<button class="btn ghost small more-months" type="button" data-more="1">'+(DV.moreMonths?'Ver menos meses':'Ver todos los meses ('+all.length+')')+'</button>';
+  if(all.length>4)h+='<button class="btn ghost small more-months" type="button" data-more="1">'+(DV.moreMonths?'Show fewer months':'Show all months ('+all.length+')')+'</button>';
   return h+'</div>';
 }
 
 function renderDashFilters(){
   var sel=$('#d-club');
-  sel.innerHTML='<option value="all">Todas</option>'+S.clubs.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>'}).join('');
+  sel.innerHTML='<option value="all">All</option>'+S.clubs.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>'}).join('');
   if(DV.club!=='all'&&!club(DV.club))DV.club='all';
   sel.value=DV.club;$('#d-type').value=DV.type;$('#d-status').value=DV.status;
   $$('#periodChips .chip').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.p===DV.period))});
@@ -347,49 +347,49 @@ function renderDashFilters(){
 function renderDash(){
   var out=$('#dashOut');
   if(!S.clubs.length){
-    out.innerHTML='<div class="card empty"><b>Aún no hay discotecas</b>Añade la primera en la pestaña Discotecas para empezar a apuntar guests.</div>';return;
+    out.innerHTML='<div class="card empty"><b>No venues yet</b>Add your first one in the Venues tab to start logging guests.</div>';return;
   }
   var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'&&DV.status!=='rej'&&DV.status!=='ns'),lab=nightsRange().label;
   var h='';
   if(!list.length){
-    h+='<div class="card empty"><b>Nada que mostrar</b>No hay guests con estos filtros. Prueba otro periodo o apunta gente en la pestaña Listas.</div>';
+    h+='<div class="card empty"><b>Nothing to show</b>No guests match these filters. Try another period or add people in the Lists tab.</div>';
   }else{
     var neto=t.gen-t.ret,prevNeto=t.prevGen-t.prevRet,rate100=t.heads?Math.round(t.inHeads/t.heads*100):0;
-    h+='<div class="card hero"><span class="lbl">Balance neto · '+esc(lab)+'</span><span class="big num">'+esc(eur(neto))+'</span>'
-     +'<div class="line"><span>Generado <b class="num">'+esc(eur(t.gen))+'</b></span>'
+    h+='<div class="card hero"><span class="lbl">Net balance · '+esc(lab)+'</span><span class="big num">'+esc(eur(neto))+'</span>'
+     +'<div class="line"><span>Earned <b class="num">'+esc(eur(t.gen))+'</b></span>'
      +(t.bonus>0?'<span>Bonus <b class="num">+'+esc(eur(t.bonus))+'</b></span>':'')
-     +(t.ret>0?'<span>Retiros PAGO <b class="num">−'+esc(eur(t.ret))+'</b></span>':'')
-     +(t.mesas>0?'<span>⭐ <b class="num">'+plural(t.mesas,'mesa','mesas')+'</b></span>':'')
-     +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> si entran los pendientes</span>':'')+'</div></div>';
+     +(t.ret>0?'<span>Referral payouts <b class="num">−'+esc(eur(t.ret))+'</b></span>':'')
+     +(t.mesas>0?'<span>⭐ <b class="num">'+plural(t.mesas,'table','tables')+'</b></span>':'')
+     +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> if pending guests get in</span>':'')+'</div></div>';
     h+='<div class="tiles">'
-     +'<div class="tile"><div class="v num">'+t.heads+'</div><div class="l">Apuntados</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
-     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Han entrado</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0)-(t.ns||0))+' pendientes'+(t.rej?' · '+t.rej+' rechazados':'')+(t.ns?' · '+t.ns+' not show':'')+'</div></div>'
-     +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entrada</div><div class="d">de lo apuntado</div></div></div>';
+     +'<div class="tile"><div class="v num">'+t.heads+'</div><div class="l">Logged</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
+     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Got in</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0)-(t.ns||0))+' pending'+(t.rej?' · '+t.rej+' rejected':'')+(t.ns?' · '+t.ns+' not show':'')+'</div></div>'
+     +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entry rate</div><div class="d">of those logged</div></div></div>';
   }
   var tp=topLists(),wr=DV.rank==='worst';
-  h+='<div class="chips" role="group" aria-label="Ranking"><button class="chip" type="button" data-rank="best" aria-pressed="'+(!wr)+'">🏆 Mejores</button><button class="chip" type="button" data-rank="worst" aria-pressed="'+wr+'">🙅 Peores</button></div>';
+  h+='<div class="chips" role="group" aria-label="Ranking"><button class="chip" type="button" data-rank="best" aria-pressed="'+(!wr)+'">🏆 Best</button><button class="chip" type="button" data-rank="worst" aria-pressed="'+wr+'">❌ Not show / Rejected</button></div>';
   if(wr){
-    h+=topCard('🙅 Top 10 peores guests','Los que más veces han sido rechazados o no han venido · '+esc(lab),tp.badGuests,'bg');
-    h+=topCard('🙅 Top 10 peores clientes','Mesas rechazadas o que no han venido · '+esc(lab),tp.badClients,'bc');
+    h+=topCard('❌ Top 10 Not show / Rejected guests','Most times rejected at the door or not showing up · '+esc(lab),tp.badGuests,'bg');
+    h+=topCard('❌ Top 10 Not show / Rejected clients','Tables rejected or not showing up · '+esc(lab),tp.badClients,'bc');
   }else{
-    h+=topCard('🏆 Top 10 guests','Quién ha llevado más gente y cuántas veces repite · '+esc(lab),tp.guests,'g');
-    h+=topCard('Top 10 clientes','Los que vienen con mesa · '+esc(lab),tp.clients,'c');
+    h+=topCard('🏆 Top 10 guests','Who brought the most people and how often they come back · '+esc(lab),tp.guests,'g');
+    h+=topCard('Top 10 clients','Regulars with a table · '+esc(lab),tp.clients,'c');
   }
   h+=monthsHtml();
 
   var days=Object.keys(t.days).sort().slice(-14);
   if(list.length&&days.length>1){
-    h+='<div class="card"><h2>Personas dentro por noche</h2><div class="sub">Todas las personas que han entrado.</div><div class="chart-box" id="colChart"></div></div>';
+    h+='<div class="card"><h2>People in per night</h2><div class="sub">Everyone who got in.</div><div class="chart-box" id="colChart"></div></div>';
   }
 
   var pk=Object.keys(t.prom);
   if(pk.length){
-    h+='<div class="card"><h2>PAGO · lo que debes a otros promotores</h2><div class="sub">Pendiente de pagar: <b class="num">'+esc(eur(t.retPend))+'</b></div><div style="margin-top:8px">';
+    h+='<div class="card"><h2>Referrals · what you owe other promoters</h2><div class="sub">Still to pay: <b class="num">'+esc(eur(t.retPend))+'</b></div><div style="margin-top:8px">';
     pk.sort(function(a,b){return t.prom[b].pend-t.prom[a].pend}).forEach(function(k){
       var p=t.prom[k];
       h+='<div class="debt"><div class="who">'+esc(k)+'<div class="sub">'+plural(p.n,'guest','guests')+' · total '+esc(eur(p.total))+'</div></div>'
-       +(p.pend>0?'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end"><span class="num" style="font-weight:700">'+esc(eur(p.pend))+'</span><button class="btn small ghost" type="button" data-act="paid" data-prom="'+esc(k)+'">Marcar pagado</button></div>'
-         :'<span class="badge">'+ICON_CHECK+'Pagado</span>')+'</div>';
+       +(p.pend>0?'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end"><span class="num" style="font-weight:700">'+esc(eur(p.pend))+'</span><button class="btn small ghost" type="button" data-act="paid" data-prom="'+esc(k)+'">Mark as paid</button></div>'
+         :'<span class="badge">'+ICON_CHECK+'Paid</span>')+'</div>';
     });
     h+='</div></div>';
   }
@@ -413,19 +413,19 @@ function drawColumns(el,days,data){
     if(h>0)s+='<path d="M'+x+','+(y+h)+' L'+x+','+(y+r)+' Q'+x+','+y+' '+(x+r)+','+y+' L'+(x+bw-r)+','+y+' Q'+(x+bw)+','+y+' '+(x+bw)+','+(y+r)+' L'+(x+bw)+','+(y+h)+' Z" style="fill:var(--s1)"/>';
     if(i===maxI&&v>0)s+='<text x="'+(x+bw/2)+'" y="'+(y-6)+'" text-anchor="middle" font-size="12" font-weight="700" style="fill:var(--ink)">'+v+'</text>';
     if(days.length<=8||i%2===(days.length-1)%2)s+='<text x="'+(x+bw/2)+'" y="'+(H-7)+'" text-anchor="middle" font-size="11" style="fill:var(--muted)">'+fmtShort(d)+'</text>';
-    s+='<rect x="'+(L+step*i)+'" y="'+T+'" width="'+step+'" height="'+ph+'" fill="transparent" data-tip="'+esc(fmtLong(d)+'|'+plural(v,'persona dentro','personas dentro'))+'"/>';
+    s+='<rect x="'+(L+step*i)+'" y="'+T+'" width="'+step+'" height="'+ph+'" fill="transparent" data-tip="'+esc(fmtLong(d)+'|'+plural(v,'person in','people in'))+'"/>';
   });
-  el.innerHTML='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Personas dentro por noche">'+s+'</svg>';
+  el.innerHTML='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="People in per night">'+s+'</svg>';
 }
 
 function markPaid(prom){
   var before=snap(),list=dFiltered(),n=0;
   list.forEach(function(e){
-    if(e.type==='pago'&&e.entered&&!e.paid&&(e.promoter||'Sin indicar')===prom){e.paid=true;n++}
+    if(e.type==='pago'&&e.entered&&!e.paid&&(e.promoter||'Unspecified')===prom){e.paid=true;n++}
   });
   if(!n)return;
   save();renderDash();
-  toast('Pagos a '+prom+' marcados como pagados.',function(){restoreSnap(before)});
+  toast('Payments to '+prom+' marked as paid.',function(){restoreSnap(before)});
 }
 
 function bindDash(){
@@ -480,8 +480,8 @@ function dayEntries(){
   return S.entries.filter(function(e){return e.date===LV.date&&e.clubId===LV.club}).sort(function(a,b){return (a.ts||0)-(b.ts||0)});
 }
 function pillsFor(e){
-  if(hasSplit(e))return (e.f?'<span class="pill f">'+e.f+(e.f===1?' chica':' chicas')+'</span>':'')+(e.m?'<span class="pill m">'+e.m+(e.m===1?' chico':' chicos')+'</span>':'');
-  return e.n>1?'<span class="pill">'+e.n+' pers.</span>':'';
+  if(hasSplit(e))return (e.f?'<span class="pill f">'+e.f+(e.f===1?' girl':' girls')+'</span>':'')+(e.m?'<span class="pill m">'+e.m+(e.m===1?' guy':' guys')+'</span>':'');
+  return e.n>1?'<span class="pill">'+e.n+' ppl</span>':'';
 }
 function readCounts(pf,pm){
   return {f:Math.max(0,parseInt($(pf).value,10)||0),m:Math.max(0,parseInt($(pm).value,10)||0)};
@@ -498,8 +498,8 @@ function renderForm(){
 
 function renderHint(){
   var h=$('#hint'),name=$('#f-name').value.trim(),c=readCounts('#f-f','#f-m'),n=c.f+c.m;
-  if(!name&&!n){h.innerHTML='Nombre, chicas y chicos. Los botones <b>Host</b> apuntan al momento con ese extra.';return}
-  h.innerHTML='<b>'+esc(name||'…')+'</b> · '+esc(n?splitText(n,c.m,c.f):'1 persona')+(LV.type==='mesa'?' · ⭐ mesa':'')+(LV.type==='pago'?' · PAGO':'');
+  if(!name&&!n){h.innerHTML='Name, girls and guys. The <b>Host</b> buttons log one instantly with that fee.';return}
+  h.innerHTML='<b>'+esc(name||'…')+'</b> · '+esc(n?splitText(n,c.m,c.f):'1 person')+(LV.type==='mesa'?' · ⭐ table':'')+(LV.type==='pago'?' · Referral':'');
 }
 
 function renderSugg(){
@@ -520,45 +520,45 @@ function renderSugg(){
 function renderLists(){
   ensureClub();
   var today=nightDate();
-  $('#dayLabel').innerHTML='<span class="dl">'+esc(fmtLong(LV.date))+' ▾</span>'+(LV.date===today?'<small>Esta noche</small>':'<small>Toca para abrir el calendario</small>');
+  $('#dayLabel').innerHTML='<span class="dl">'+esc(fmtLong(LV.date))+' ▾</span>'+(LV.date===today?'<small>Tonight</small>':'<small>Tap to open the calendar</small>');
   var sel=$('#clubSel');sel.innerHTML=S.clubs.map(function(c){return '<option value="'+esc(c.id)+'"'+(c.id===LV.club?' selected':'')+'>'+esc(c.name)+'</option>'}).join('');sel.disabled=!S.clubs.length;
   var out=$('#listOut'),sum=$('#sumBar');
   if(!S.clubs.length){
     sum.innerHTML='';
-    out.innerHTML='<div class="card empty"><b>Primero añade una discoteca</b>Ve a la pestaña Discotecas y crea la primera.</div>';
+    out.innerHTML='<div class="card empty"><b>Add a venue first</b>Go to the Venues tab and create your first one.</div>';
     return;
   }
   var list=dayEntries(),c=club(LV.club);
   var tot=0,inn=0,mesas=0,rej=0,ns=0;
   list.forEach(function(e){tot+=heads(e);if(e.rejected)rej+=heads(e);if(statusOf(e)==='ns')ns+=heads(e);if(e.entered){inn+=heads(e);if(e.type==='mesa')mesas++}});
-  var s='<span><b class="num">'+inn+'</b> de '+tot+' dentro</span>';
+  var s='<span><b class="num">'+inn+'</b> of '+tot+' in</span>';
   if(mesas)s+='<span>⭐ <b class="num">'+mesas+'</b></span>';
-  if(rej)s+='<span>🚫 <b class="num">'+rej+'</b> rechazados</span>';
+  if(rej)s+='<span>🚫 <b class="num">'+rej+'</b> rejected</span>';
   if(ns)s+='<span style="color:var(--s2)"><b class="num">'+ns+'</b> not show</span>';
   if(c&&c.bonusEvery>0&&c.bonusAmount>0){
     var got=Math.floor(inn/c.bonusEvery)*c.bonusAmount,left=c.bonusEvery-(inn%c.bonusEvery);
-    s+='<span>Bonus <b class="num">'+esc(eur(got))+'</b> · faltan '+left+' para el siguiente</span>';
+    s+='<span>Bonus <b class="num">'+esc(eur(got))+'</b> · '+left+' more for the next one</span>';
   }
   sum.innerHTML=s;
   if(!list.length){
-    out.innerHTML='<div class="card empty"><b>Nada apuntado</b>Escribe el nombre y pon cuántas chicas y chicos vienen.</div>';
+    out.innerHTML='<div class="card empty"><b>Nothing logged yet</b>Type a name and how many girls and guys are coming.</div>';
     return;
   }
   var h='<div class="card" style="padding:4px 14px"><ul class="list">';
   list.forEach(function(e){
     var pr=profileOf(e.name),d=pr&&pr.desc;
     h+='<li class="person'+(e.entered?' in':'')+(e.rejected?' rej':'')+(statusOf(e)==='ns'?' ns':'')+'">'
-      +'<button class="row-main" type="button" data-act="toggle" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.entered)+'" aria-label="'+esc(e.name)+': '+(e.entered?'ha entrado':'pendiente')+'">'
+      +'<button class="row-main" type="button" data-act="toggle" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.entered)+'" aria-label="'+esc(e.name)+': '+(e.entered?'got in':'pending')+'">'
       +'<span class="ring">'+ICON_CHECK+'</span>'
-      +'<span><span class="nm">'+(e.type==='mesa'?'<span aria-label="mesa">⭐</span>':'')+'<span>'+esc(e.name)+'</span>'+pillsFor(e)
+      +'<span><span class="nm">'+(e.type==='mesa'?'<span aria-label="table">⭐</span>':'')+'<span>'+esc(e.name)+'</span>'+pillsFor(e)
       +(hasNum(e.extra)&&+e.extra>0?'<span class="tag" style="color:var(--s3)">Host '+esc(eur(+e.extra))+'</span>':'')
-      +(e.rejected?'<span class="tag" style="color:var(--crit)">Rechazado</span>':'')
+      +(e.rejected?'<span class="tag" style="color:var(--crit)">Rejected</span>':'')
       +(statusOf(e)==='ns'?'<span class="tag" style="color:var(--s2)">Not show</span>':'')
-      +(e.type==='pago'?'<span class="tag" style="color:var(--s2)">PAGO'+(e.promoter?' · '+esc(e.promoter):'')+'</span>':'')+'</span>'
+      +(e.type==='pago'?'<span class="tag" style="color:var(--s2)">Referral'+(e.promoter?' · '+esc(e.promoter):'')+'</span>':'')+'</span>'
       +(d?'<span class="desc" style="display:block;white-space:pre-line">'+linkify(d)+'</span>':'')
       +'</span></button>'
-      +'<button class="rejbtn" type="button" data-act="reject" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.rejected)+'" aria-label="'+(e.rejected?'Quitar rechazo de ':'Rechazar a ')+esc(e.name)+'">✕</button>'
-      +'<button class="dots" type="button" data-act="edit" data-id="'+esc(e.id)+'" aria-label="Editar '+esc(e.name)+'">⋯</button>';
+      +'<button class="rejbtn" type="button" data-act="reject" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.rejected)+'" aria-label="'+(e.rejected?'Remove rejection for ':'Reject ')+esc(e.name)+'">✕</button>'
+      +'<button class="dots" type="button" data-act="edit" data-id="'+esc(e.id)+'" aria-label="Edit '+esc(e.name)+'">⋯</button>';
     if(LV.edit===e.id)h+=editPanel(e);
     h+='</li>';
   });
@@ -569,28 +569,28 @@ function renderLists(){
 function editPanel(e){
   var pr=profileOf(e.name)||{},id=esc(e.id),sp=hasSplit(e);
   var h='<div class="edit">'
-    +'<label class="f" for="e-name">Nombre<input class="in" id="e-name" type="text" value="'+esc(e.name)+'"></label>'
+    +'<label class="f" for="e-name">Name<input class="in" id="e-name" type="text" value="'+esc(e.name)+'"></label>'
     +'<div class="grid2">'
-    +'<label class="f cnt f-g" for="e-f"><span>Chicas</span><input class="in num" id="e-f" type="number" inputmode="numeric" min="0" value="'+(sp?e.f:0)+'"></label>'
-    +'<label class="f cnt f-b" for="e-m"><span>Chicos</span><input class="in num" id="e-m" type="number" inputmode="numeric" min="0" value="'+(sp?e.m:0)+'"></label>'
+    +'<label class="f cnt f-g" for="e-f"><span>Girls</span><input class="in num" id="e-f" type="number" inputmode="numeric" min="0" value="'+(sp?e.f:0)+'"></label>'
+    +'<label class="f cnt f-b" for="e-m"><span>Guys</span><input class="in num" id="e-m" type="number" inputmode="numeric" min="0" value="'+(sp?e.m:0)+'"></label>'
     +'</div>'
-    +(sp?'':'<div class="sub">Ahora cuenta '+plural(e.n,'persona','personas')+' sin desglose. Si dejas 0 y 0 se mantiene.</div>')
+    +(sp?'':'<div class="sub">Currently counts '+plural(e.n,'person','people')+' with no split. Leave 0 and 0 to keep it.</div>')
     +'<div class="grid2">'
-    +'<label class="f" for="e-club">Discoteca<select class="in" id="e-club">'+S.clubs.map(function(c){return '<option value="'+esc(c.id)+'"'+(c.id===e.clubId?' selected':'')+'>'+esc(c.name)+'</option>'}).join('')+'</select></label>'
-    +'<label class="f" for="e-type">Tipo<select class="in" id="e-type"><option value="lista"'+(e.type==='lista'?' selected':'')+'>Lista</option><option value="mesa"'+(e.type==='mesa'?' selected':'')+'>⭐ Mesa</option><option value="pago"'+(e.type==='pago'?' selected':'')+'>PAGO</option></select></label>'
+    +'<label class="f" for="e-club">Venue<select class="in" id="e-club">'+S.clubs.map(function(c){return '<option value="'+esc(c.id)+'"'+(c.id===e.clubId?' selected':'')+'>'+esc(c.name)+'</option>'}).join('')+'</select></label>'
+    +'<label class="f" for="e-type">Type<select class="in" id="e-type"><option value="lista"'+(e.type==='lista'?' selected':'')+'>List</option><option value="mesa"'+(e.type==='mesa'?' selected':'')+'>⭐ Table</option><option value="pago"'+(e.type==='pago'?' selected':'')+'>Referral</option></select></label>'
     +'</div>'
-    +'<label class="f" for="e-desc">Descripción / Instagram / acompañantes<textarea class="in" id="e-desc" rows="3">'+esc(pr.desc||'')+'</textarea></label>'
-    +'<label class="f" for="e-extra">Extra Host (£)<input class="in num" id="e-extra" type="number" inputmode="decimal" min="0" step="10" value="'+esc(hasNum(e.extra)?e.extra:'')+'"></label>';
+    +'<label class="f" for="e-desc">Notes / Instagram / plus-ones<textarea class="in" id="e-desc" rows="3">'+esc(pr.desc||'')+'</textarea></label>'
+    +'<label class="f" for="e-extra">Host fee (£)<input class="in num" id="e-extra" type="number" inputmode="decimal" min="0" step="10" value="'+esc(hasNum(e.extra)?e.extra:'')+'"></label>';
   if(e.type==='pago'){
-    h+='<label class="f" for="e-prom">Promotor que lo envía<input class="in" id="e-prom" list="promoters" type="text" value="'+esc(e.promoter||'')+'"></label>'
-      +'<label class="f" for="e-payout">A pagarle (£, vacío = lo que paga la sala)<input class="in num" id="e-payout" type="number" inputmode="decimal" min="0" step="0.5" value="'+esc(hasNum(e.payout)?e.payout:'')+'"></label>'
-      +'<label style="display:flex;gap:10px;align-items:center;min-height:44px"><input type="checkbox" id="e-paid"'+(e.paid?' checked':'')+'> Ya le he pagado</label>';
+    h+='<label class="f" for="e-prom">Referring promoter<input class="in" id="e-prom" list="promoters" type="text" value="'+esc(e.promoter||'')+'"></label>'
+      +'<label class="f" for="e-payout">Pay-out to them (£, empty = what the venue pays)<input class="in num" id="e-payout" type="number" inputmode="decimal" min="0" step="0.5" value="'+esc(hasNum(e.payout)?e.payout:'')+'"></label>'
+      +'<label style="display:flex;gap:10px;align-items:center;min-height:44px"><input type="checkbox" id="e-paid"'+(e.paid?' checked':'')+'> Already paid</label>';
   }
   if(e.type==='mesa'){var cl=club(e.clubId),pc=cl?(+cl.pctMesa||0):0;
-    h+='<label class="f" for="e-spend">Consumo de la mesa (£) · comisión '+pc+'%'+(hasNum(e.spend)?' = '+esc(eur(pc/100*(+e.spend))):'')+'<input class="in num" id="e-spend" type="number" inputmode="decimal" min="0" step="1" value="'+esc(hasNum(e.spend)?e.spend:'')+'"></label>'}
+    h+='<label class="f" for="e-spend">Table spend (£) · commission '+pc+'%'+(hasNum(e.spend)?' = '+esc(eur(pc/100*(+e.spend))):'')+'<input class="in num" id="e-spend" type="number" inputmode="decimal" min="0" step="1" value="'+esc(hasNum(e.spend)?e.spend:'')+'"></label>'}
   h+=''
-    +'<div class="actions"><div style="display:flex;gap:8px"><button class="btn" type="button" data-act="save" data-id="'+id+'">Guardar</button><button class="btn ghost" type="button" data-act="cancel">Cancelar</button></div>'
-    +(LV.confirmDel===e.id?'<button class="btn danger" type="button" data-act="del2" data-id="'+id+'">Sí, borrar</button>':'<button class="btn ghost" type="button" data-act="del" data-id="'+id+'">Borrar</button>')
+    +'<div class="actions"><div style="display:flex;gap:8px"><button class="btn" type="button" data-act="save" data-id="'+id+'">Save</button><button class="btn ghost" type="button" data-act="cancel">Cancel</button></div>'
+    +(LV.confirmDel===e.id?'<button class="btn danger" type="button" data-act="del2" data-id="'+id+'">Yes, delete</button>':'<button class="btn ghost" type="button" data-act="del" data-id="'+id+'">Delete</button>')
     +'</div></div>';
   return h;
 }
@@ -600,7 +600,7 @@ function findEntry(id){return S.entries.filter(function(e){return e.id===id})[0]
 function saveEdit(id){
   var e=findEntry(id);if(!e)return;
   var name=$('#e-name').value.trim();
-  if(!name){toast('Pon un nombre.');return}
+  if(!name){toast('Enter a name.');return}
   var c=readCounts('#e-f','#e-m'),oldKey=pkey(e.name),keep=!hasSplit(e)&&e.n>1&&c.f+c.m===0;
   e.name=name;e.clubId=$('#e-club').value;e.type=$('#e-type').value;
   if(!keep){e.m=c.m;e.f=c.f;e.n=Math.max(1,c.m+c.f)}
@@ -625,9 +625,9 @@ function addEntry(extra){
   if(!LV.club)return;
   var name=$('#f-name').value.trim();
   if(!name&&extra)name='Host';
-  if(!name){toast('Escribe el nombre.');$('#f-name').focus();return}
+  if(!name){toast('Type a name.');$('#f-name').focus();return}
   var k=pkey(name);
-  if(!(extra&&name==='Host')&&dayEntries().some(function(e){return pkey(e.name)===k})){toast(name+' ya está apuntado en esta lista.');return}
+  if(!(extra&&name==='Host')&&dayEntries().some(function(e){return pkey(e.name)===k})){toast(name+' is already on this list.');return}
   var c=readCounts('#f-f','#f-m'),pr=S.profiles[k],n=c.f+c.m;
   if(n===0){if(pr&&pr.n&&!extra){n=pr.n;c.m=pr.m||0;c.f=pr.f||0}else n=1}
   var prom=LV.type==='pago'?($('#f-promoter').value.trim()||(pr&&pr.promoter)||''):'';
@@ -653,17 +653,17 @@ function renderCal(){
   var root=$('#calRoot');
   if(!CAL.open){root.innerHTML='';return}
   var p=CAL.month.split('-'),y=+p[0],mo=+p[1]-1,off=(new Date(y,mo,1).getDay()+6)%7,dim=new Date(y,mo+1,0).getDate(),info=dayInfo(),today=nightDate();
-  var h='<div class="scrim" id="calScrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Elegir noche">'
-    +'<div class="cal-head"><button type="button" class="cal-nav" data-cal="prev" aria-label="Mes anterior">‹</button><h2>'+esc(monthName(CAL.month))+'</h2><button type="button" class="cal-nav" data-cal="next" aria-label="Mes siguiente">›</button></div>'
-    +'<div class="cal-grid cal-dow">'+['L','M','X','J','V','S','D'].map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>'
+  var h='<div class="scrim" id="calScrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Pick a night">'
+    +'<div class="cal-head"><button type="button" class="cal-nav" data-cal="prev" aria-label="Previous month">‹</button><h2>'+esc(monthName(CAL.month))+'</h2><button type="button" class="cal-nav" data-cal="next" aria-label="Next month">›</button></div>'
+    +'<div class="cal-grid cal-dow">'+['M','T','W','T','F','S','S'].map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>'
     +'<div class="cal-grid">';
   for(var i=0;i<off;i++)h+='<span></span>';
   for(var d=1;d<=dim;d++){
     var date=iso(new Date(y,mo,d)),x=info[date];
-    h+='<button type="button" class="cal-d'+(x?' has':'')+(date===LV.date?' sel':'')+(date===today?' today':'')+'" data-cal-day="'+date+'" aria-label="'+esc(fmtLong(date))+(x?', hay lista':'')+(x&&x.mesa?' con mesa':'')+'">'+d+(x&&x.mesa?'<i class="st">⭐</i>':'')+'</button>';
+    h+='<button type="button" class="cal-d'+(x?' has':'')+(date===LV.date?' sel':'')+(date===today?' today':'')+'" data-cal-day="'+date+'" aria-label="'+esc(fmtLong(date))+(x?', has a list':'')+(x&&x.mesa?' with a table':'')+'">'+d+(x&&x.mesa?'<i class="st">⭐</i>':'')+'</button>';
   }
-  h+='</div><div class="cal-legend"><span><i class="lg"></i>Hay lista</span><span>⭐ Hay mesa</span></div>'
-    +'<div class="cal-foot"><button type="button" class="btn ghost small" data-cal="today">Hoy</button><button type="button" class="btn small" data-cal="close">Cerrar</button></div></div></div>';
+  h+='</div><div class="cal-legend"><span><i class="lg"></i>Has a list</span><span>⭐ Has a table</span></div>'
+    +'<div class="cal-foot"><button type="button" class="btn ghost small" data-cal="today">Today</button><button type="button" class="btn small" data-cal="close">Close</button></div></div></div>';
   root.innerHTML=h;
 }
 function openCal(){CAL.open=true;CAL.month=LV.date.slice(0,7);renderCal()}
@@ -719,7 +719,7 @@ function bindLists(){
       var before=snap();
       S.entries=S.entries.filter(function(x){return x.id!==id});
       LV.edit=null;LV.confirmDel=null;save();renderLists();
-      toast(e.name+' borrado.',function(){restoreSnap(before)});
+      toast(e.name+' deleted.',function(){restoreSnap(before)});
     }
   });
 }
@@ -774,8 +774,8 @@ function invData(c,a,b){
 function invNo(c,b){return (me().prefix||'INV')+'-'+b.replace(/-/g,'')+'-'+(S.clubs.indexOf(c)+1)}
 function invoiceHtml(c,a,b,d){
   var m=me(),bl=c.bill||{},vat=+m.vat||0,vatAmt=d.sub*vat/100,total=d.sub+vatAmt,today=nightDate();
-  var from=(m.name||m.trade)?'<b>'+esc(m.trade||m.name)+'</b>'+(m.trade&&m.name?'<br>'+esc(m.name):'')+(m.addr?'<br>'+lines(m.addr):'')+(m.email?'<br>'+esc(m.email):'')+(m.phone?'<br>'+esc(m.phone):'')+(m.taxId?'<br>'+esc(m.taxId):''):'<span class="imiss">Add your details in Discotecas › Mis datos de facturación</span>';
-  var to='<b>'+esc(bl.name||c.name)+'</b>'+(bl.addr?'<br>'+lines(bl.addr):'')+(bl.email?'<br>'+esc(bl.email):'')+(bl.taxId?'<br>'+esc(bl.taxId):'')+(bl.ref?'<br>Ref: '+esc(bl.ref):'')+((bl.addr||bl.name)?'':'<br><span class="imiss">Add billing details in Discotecas</span>');
+  var from=(m.name||m.trade)?'<b>'+esc(m.trade||m.name)+'</b>'+(m.trade&&m.name?'<br>'+esc(m.name):'')+(m.addr?'<br>'+lines(m.addr):'')+(m.email?'<br>'+esc(m.email):'')+(m.phone?'<br>'+esc(m.phone):'')+(m.taxId?'<br>'+esc(m.taxId):''):'<span class="imiss">Add your details in Venues › My billing details</span>';
+  var to='<b>'+esc(bl.name||c.name)+'</b>'+(bl.addr?'<br>'+lines(bl.addr):'')+(bl.email?'<br>'+esc(bl.email):'')+(bl.taxId?'<br>'+esc(bl.taxId):'')+(bl.ref?'<br>Ref: '+esc(bl.ref):'')+((bl.addr||bl.name)?'':'<br><span class="imiss">Add billing details in Venues</span>');
   var h='<section class="invdoc"><div class="ihead"><div><h1>INVOICE</h1></div><table class="imeta">'
     +'<tr><td>Invoice no.</td><td><b>'+esc(invNo(c,b))+'</b></td></tr>'
     +'<tr><td>Date</td><td>'+esc(fmtEn(today))+'</td></tr>'
@@ -788,7 +788,7 @@ function invoiceHtml(c,a,b,d){
   h+='</tbody></table><div class="itot"><div><span>Subtotal</span><span>'+esc(eur(d.sub))+'</span></div>'
     +(vat>0?'<div><span>VAT ('+vat+'%)</span><span>'+esc(eur(vatAmt))+'</span></div>':'')
     +'<div class="ig"><span>Total due</span><span>'+esc(eur(total))+'</span></div></div>'
-    +'<div class="ipay"><h3>Payment details</h3>'+(m.bank?lines(m.bank):'<span class="imiss">Add your bank details in Discotecas › Mis datos de facturación</span>')
+    +'<div class="ipay"><h3>Payment details</h3>'+(m.bank?lines(m.bank):'<span class="imiss">Add your bank details in Venues › My billing details</span>')
     +'<div style="margin-top:8px;color:#666">I am responsible of my own taxes and National Insurance contributions</div></div></section>';
   return h;
 }
@@ -804,42 +804,42 @@ function renderInv(){
   if(IV.rec){
     var rc=invRec(IV.rec);
     if(!rc){IV.rec=null;IV.open=false;root.innerHTML='';return}
-    root.innerHTML='<div class="invview"><div class="invbar"><button type="button" class="btn ghost small" data-iv="back">‹ Cerrar</button>'
-      +'<button type="button" class="btn small" data-iv="print">Imprimir / PDF</button><button type="button" class="btn ghost small" data-iv="save">Guardar archivo</button></div>'
+    root.innerHTML='<div class="invview"><div class="invbar"><button type="button" class="btn ghost small" data-iv="back">‹ Close</button>'
+      +'<button type="button" class="btn small" data-iv="print">Print / PDF</button><button type="button" class="btn ghost small" data-iv="save">Save file</button></div>'
       +'<style>'+INV_CSS+'</style>'+rc.html+'</div>';
     return;
   }
   if(IV.view){
     var L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
-    root.innerHTML='<div class="invview"><div class="invbar"><button type="button" class="btn ghost small" data-iv="back">‹ Volver</button>'
-      +'<button type="button" class="btn small" data-iv="print">Imprimir / PDF</button><button type="button" class="btn ghost small" data-iv="save">Guardar archivo</button></div>'
+    root.innerHTML='<div class="invview"><div class="invbar"><button type="button" class="btn ghost small" data-iv="back">‹ Back</button>'
+      +'<button type="button" class="btn small" data-iv="print">Print / PDF</button><button type="button" class="btn ghost small" data-iv="save">Save file</button></div>'
       +'<style>'+INV_CSS+'</style>'+L.map(function(x){return invoiceHtml(x.c,IV.from,IV.to,x.d)}).join('')+'</div>';
     return;
   }
-  var h='<div class="scrim" id="ivScrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Crear invoice">'
-    +'<div class="row-between"><h2>Crear invoice</h2><button class="btn ghost small" type="button" data-iv="close">Cerrar</button></div>'
-    +'<p class="sub" style="margin:6px 0 10px">Elige las fechas y se crea una invoice por cada discoteca con lo que ha entrado en ese periodo.</p>'
-    +'<div class="chips" style="margin-bottom:10px"><button class="chip" type="button" data-iv="p-sem">Esta semana</button><button class="chip" type="button" data-iv="p-mes">Este mes</button><button class="chip" type="button" data-iv="p-ant">Mes anterior</button></div>'
-    +'<div class="grid2"><label class="f" for="iv-from">Fecha de inicio<input class="in" type="date" id="iv-from" value="'+esc(IV.from)+'"></label>'
-    +'<label class="f" for="iv-to">Fecha de fin<input class="in" type="date" id="iv-to" value="'+esc(IV.to)+'"></label></div>'
+  var h='<div class="scrim" id="ivScrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Create invoice">'
+    +'<div class="row-between"><h2>Create invoice</h2><button class="btn ghost small" type="button" data-iv="close">Close</button></div>'
+    +'<p class="sub" style="margin:6px 0 10px">Pick the dates and one invoice is created for each venue, covering the guests who got in during that period.</p>'
+    +'<div class="chips" style="margin-bottom:10px"><button class="chip" type="button" data-iv="p-sem">This week</button><button class="chip" type="button" data-iv="p-mes">This month</button><button class="chip" type="button" data-iv="p-ant">Last month</button></div>'
+    +'<div class="grid2"><label class="f" for="iv-from">Start date<input class="in" type="date" id="iv-from" value="'+esc(IV.from)+'"></label>'
+    +'<label class="f" for="iv-to">End date<input class="in" type="date" id="iv-to" value="'+esc(IV.to)+'"></label></div>'
     +'<div id="ivList"></div></div></div>';
   root.innerHTML=h;renderInvList();
 }
 function renderInvList(){
   var box=$('#ivList');if(!box)return;
   var L=invList(),h='';
-  if(!IV.from||!IV.to||IV.from>IV.to){box.innerHTML='<div class="sub" style="margin-top:14px">Pon una fecha de inicio y otra de fin (el inicio no puede ser posterior).</div>';return}
-  if(!L.length){box.innerHTML='<div class="empty" style="padding:22px 6px"><b>Nada que facturar</b>No hay guests marcados como entrados en ese periodo.</div>';return}
+  if(!IV.from||!IV.to||IV.from>IV.to){box.innerHTML='<div class="sub" style="margin-top:14px">Set a start and an end date (the start can’t be after the end).</div>';return}
+  if(!L.length){box.innerHTML='<div class="empty" style="padding:22px 6px"><b>Nothing to invoice</b>No guests are marked as entered in that period.</div>';return}
   var tot=0;
   L.forEach(function(x){
     var bl=x.c.bill||{},ok=bl.name&&bl.addr;tot+=x.d.sub;
-    h+='<div class="ivrow"><div><b>'+esc(x.c.name)+'</b><div class="sub">'+plural(x.d.nights,'noche','noches')+(ok?'':' · <span style="color:var(--crit)">faltan datos de facturación</span>')+'</div></div>'
-      +'<div style="display:flex;align-items:center;gap:10px"><b class="num">'+esc(eur(x.d.sub))+'</b><button class="btn ghost small" type="button" data-iv="view" data-cid="'+esc(x.c.id)+'">Ver</button></div></div>';
+    h+='<div class="ivrow"><div><b>'+esc(x.c.name)+'</b><div class="sub">'+plural(x.d.nights,'night','nights')+(ok?'':' · <span style="color:var(--crit)">billing details missing</span>')+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:10px"><b class="num">'+esc(eur(x.d.sub))+'</b><button class="btn ghost small" type="button" data-iv="view" data-cid="'+esc(x.c.id)+'">View</button></div></div>';
   });
   h+='<div class="ivrow"><div><b>Total</b></div><b class="num">'+esc(eur(tot))+'</b></div>';
-  h+='<button class="btn" type="button" data-iv="all" style="width:100%;margin-top:12px">Crear '+(L.length===1?'la invoice':'las '+L.length+' invoices')+'</button>';
+  h+='<button class="btn" type="button" data-iv="all" style="width:100%;margin-top:12px">Create '+(L.length===1?'the invoice':L.length+' invoices')+'</button>';
   var m=me();
-  if(!m.name&&!m.trade)h+='<div class="sub" style="margin-top:10px;color:var(--crit)">Rellena «Mis datos de facturación» en la pestaña Discotecas para que salgan en la invoice.</div>';
+  if(!m.name&&!m.trade)h+='<div class="sub" style="margin-top:10px;color:var(--crit)">Fill in “My billing details” in the Venues tab so they appear on the invoice.</div>';
   box.innerHTML=h;
 }
 function invSetRange(k){
@@ -864,22 +864,22 @@ function invSave(){
   try{
     var file=new File([f.html],f.name,{type:'text/html'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      navigator.share({files:[file],title:f.name}).catch(function(e){if(e&&e.name==='AbortError')return;toast('No se pudo guardar el archivo.')});
+      navigator.share({files:[file],title:f.name}).catch(function(e){if(e&&e.name==='AbortError')return;toast('Could not save the file.')});
       return;
     }
   }catch(e){}
   try{
     var url=URL.createObjectURL(new Blob([f.html],{type:'text/html'})),a=document.createElement('a');
     a.href=url;a.download=f.name;document.body.appendChild(a);a.click();a.remove();
-    setTimeout(function(){URL.revokeObjectURL(url)},4000);toast('Archivo descargado');
-  }catch(e){toast('No se pudo guardar el archivo.')}
+    setTimeout(function(){URL.revokeObjectURL(url)},4000);toast('File downloaded');
+  }catch(e){toast('Could not save the file.')}
 }
 function invPrint(){
   var old=document.title,rc=IV.rec&&invRec(IV.rec),L=invList().filter(function(x){return IV.view==='all'||x.c.id===IV.view});
   document.title=rc?rc.no:IV.view==='all'?'Invoices '+IV.from+' '+IV.to:(L[0]?invNo(L[0].c,IV.to):old);
   var back=function(){document.title=old;window.removeEventListener('afterprint',back)};
   window.addEventListener('afterprint',back);
-  try{window.print()}catch(e){document.title=old;toast('No se pudo abrir la impresión. Usa Guardar archivo.')}
+  try{window.print()}catch(e){document.title=old;toast('Could not open printing. Use Save file.')}
 }
 
 /* datos de facturación: los tuyos (promoter) y los de cada discoteca */
@@ -891,20 +891,20 @@ function bf(scope,key,label,val,kind){
 }
 function augmentClubs(out){
   var m=me();
-  out.insertAdjacentHTML('afterbegin','<details class="card billbox" id="meBox"><summary class="btn ghost small">Mis datos de facturación (promoter)</summary><div class="stack" style="margin-top:12px">'
-    +'<div class="sub">Salen como «From» en las invoices.</div>'
-    +bf('me','name','Tu nombre completo',m.name)+bf('me','trade','Nombre comercial / empresa (opcional)',m.trade)
-    +bf('me','addr','Dirección',m.addr,'ta')+bf('me','email','Email',m.email)+bf('me','phone','Teléfono',m.phone)
-    +bf('me','taxId','UTR / VAT / Company no. (opcional)',m.taxId)
-    +bf('me','bank','Datos bancarios (titular, sort code, cuenta / IBAN)',m.bank,'ta')
-    +bf('me','prefix','Prefijo de invoice',m.prefix||'')
-    +bf('me','vat','VAT % (0 si no aplica)',m.vat||0,'num')+'</div></details>');
+  out.insertAdjacentHTML('afterbegin','<details class="card billbox" id="meBox"><summary class="btn ghost small">My billing details (promoter)</summary><div class="stack" style="margin-top:12px">'
+    +'<div class="sub">These appear as “From” on your invoices.</div>'
+    +bf('me','name','Your full name',m.name)+bf('me','trade','Trading name / company (optional)',m.trade)
+    +bf('me','addr','Address',m.addr,'ta')+bf('me','email','Email',m.email)+bf('me','phone','Phone',m.phone)
+    +bf('me','taxId','UTR / VAT / Company no. (optional)',m.taxId)
+    +bf('me','bank','Bank details (account name, sort code, account no. / IBAN)',m.bank,'ta')
+    +bf('me','prefix','Invoice prefix',m.prefix||'')
+    +bf('me','vat','VAT % (0 if not applicable)',m.vat||0,'num')+'</div></details>');
   $$('.card',out).forEach(function(card){
     var i=card.querySelector('[data-cid]');if(!i||card.id==='meBox')return;
     var c=club(i.dataset.cid);if(!c)return;var b=c.bill||{},id=esc(c.id);
-    card.insertAdjacentHTML('beforeend','<details class="billbox club"><summary class="btn ghost small">Datos de facturación</summary><div class="stack" style="margin-top:12px">'
-      +bf(id,'name','Razón social (a quién se factura)',b.name)+bf(id,'addr','Dirección',b.addr,'ta')+bf(id,'email','Email de facturación',b.email)
-      +bf(id,'taxId','VAT / Company no. (opcional)',b.taxId)+bf(id,'ref','Referencia / PO (opcional)',b.ref)+'</div></details>');
+    card.insertAdjacentHTML('beforeend','<details class="billbox club"><summary class="btn ghost small">Billing details</summary><div class="stack" style="margin-top:12px">'
+      +bf(id,'name','Company / name to bill',b.name)+bf(id,'addr','Address',b.addr,'ta')+bf(id,'email','Billing email',b.email)
+      +bf(id,'taxId','VAT / Company no. (optional)',b.taxId)+bf(id,'ref','Reference / PO (optional)',b.ref)+'</div></details>');
   });
 }
 /* pestaña Invoices: se guardan al crearlas y se marca cuando te las pagan */
@@ -919,25 +919,25 @@ function saveInvoices(which){
     else{invs().push({id:uid(),clubId:x.c.id,clubName:x.c.name,no:no,from:IV.from,to:IV.to,created:today,total:total,paid:false,paidDate:'',html:html});n++}
   });
   save();
-  toast(n?'Guardada en la pestaña Invoices.':'Ya estaba en Invoices.');
+  toast(n?'Saved in the Invoices tab.':'Already in Invoices.');
 }
 function renderInvTab(){
   var out=$('#invOut'),sum=$('#invSum');if(!out)return;
   var L=invs().slice().sort(function(a,b){return b.created.localeCompare(a.created)||b.to.localeCompare(a.to)||a.clubName.localeCompare(b.clubName)});
   var pend=0,got=0;L.forEach(function(r){if(r.paid)got+=r.total;else pend+=r.total});
-  sum.innerHTML=L.length?'<span>Pendiente de cobro <b class="num" style="color:var(--s2)">'+esc(eur(pend))+'</b></span><span>Cobrado <b class="num" style="color:var(--good-text)">'+esc(eur(got))+'</b></span>':'';
-  if(!L.length){out.innerHTML='<div class="card empty"><b>Aún no hay invoices</b>Créalas desde el Dashboard (Crear invoice) y se guardarán aquí para marcar cuándo te las pagan.</div>';return}
+  sum.innerHTML=L.length?'<span>Awaiting payment <b class="num" style="color:var(--s2)">'+esc(eur(pend))+'</b></span><span>Received <b class="num" style="color:var(--good-text)">'+esc(eur(got))+'</b></span>':'';
+  if(!L.length){out.innerHTML='<div class="card empty"><b>No invoices yet</b>Create them from the Dashboard (Create invoice) and they’ll be saved here so you can tick them off when paid.</div>';return}
   var h='<div class="card" style="padding:4px 14px"><ul class="list">';
   L.forEach(function(r){
     var id=esc(r.id);
-    h+='<li class="person'+(r.paid?' in':'')+'"><button class="row-main" type="button" data-ia="paid" data-id="'+id+'" aria-pressed="'+(!!r.paid)+'" aria-label="'+esc(r.clubName)+': '+(r.paid?'pagada':'pendiente de pago')+'">'
+    h+='<li class="person'+(r.paid?' in':'')+'"><button class="row-main" type="button" data-ia="paid" data-id="'+id+'" aria-pressed="'+(!!r.paid)+'" aria-label="'+esc(r.clubName)+': '+(r.paid?'paid':'awaiting payment')+'">'
       +'<span class="ring">'+ICON_CHECK+'</span><span><span class="nm"><span>'+esc(r.clubName)+'</span><span class="tag">'+esc(eur(r.total))+'</span>'
-      +(r.paid?'<span class="tag" style="color:var(--good-text)">Pagada'+(r.paidDate?' · '+esc(fmtShort(r.paidDate)):'')+'</span>':'<span class="tag" style="color:var(--s2)">Pendiente</span>')+'</span>'
-      +'<span class="desc" style="display:block">Creada el '+esc(fmtEn(r.created))+' · '+esc(fmtEn(r.from))+' – '+esc(fmtEn(r.to))+'<br>'+esc(r.no)+'</span></span></button>'
-      +'<button class="rejbtn" type="button" data-ia="view" data-id="'+id+'" aria-label="Ver invoice de '+esc(r.clubName)+'">📄</button>'
-      +'<button class="dots" type="button" data-ia="edit" data-id="'+id+'" aria-label="Más opciones">⋯</button>';
-    if(IT.edit===r.id)h+='<div class="edit"><div class="actions"><button class="btn ghost small" type="button" data-ia="close">Cerrar</button>'
-      +(IT.del===r.id?'<button class="btn danger small" type="button" data-ia="del2" data-id="'+id+'">Sí, eliminar</button>':'<button class="btn ghost small" type="button" data-ia="del" data-id="'+id+'">Eliminar</button>')+'</div></div>';
+      +(r.paid?'<span class="tag" style="color:var(--good-text)">Paid'+(r.paidDate?' · '+esc(fmtShort(r.paidDate)):'')+'</span>':'<span class="tag" style="color:var(--s2)">Pending</span>')+'</span>'
+      +'<span class="desc" style="display:block">Created '+esc(fmtEn(r.created))+' · '+esc(fmtEn(r.from))+' – '+esc(fmtEn(r.to))+'<br>'+esc(r.no)+'</span></span></button>'
+      +'<button class="rejbtn" type="button" data-ia="view" data-id="'+id+'" aria-label="View invoice for '+esc(r.clubName)+'">📄</button>'
+      +'<button class="dots" type="button" data-ia="edit" data-id="'+id+'" aria-label="More options">⋯</button>';
+    if(IT.edit===r.id)h+='<div class="edit"><div class="actions"><button class="btn ghost small" type="button" data-ia="close">Close</button>'
+      +(IT.del===r.id?'<button class="btn danger small" type="button" data-ia="del2" data-id="'+id+'">Yes, delete</button>':'<button class="btn ghost small" type="button" data-ia="del" data-id="'+id+'">Delete</button>')+'</div></div>';
     h+='</li>';
   });
   out.innerHTML=h+'</ul></div>';
@@ -951,7 +951,7 @@ function bindInvoice(){
     else if(a==='edit'&&r){IT.edit=IT.edit===r.id?null:r.id;IT.del=null;renderInvTab()}
     else if(a==='close'){IT.edit=null;IT.del=null;renderInvTab()}
     else if(a==='del'){IT.del=b.dataset.id;renderInvTab()}
-    else if(a==='del2'&&r){var before=snap();S.invoices=invs().filter(function(x){return x.id!==r.id});IT.edit=null;IT.del=null;save();renderInvTab();toast('Invoice eliminada.',function(){restoreSnap(before)})}
+    else if(a==='del2'&&r){var before=snap();S.invoices=invs().filter(function(x){return x.id!==r.id});IT.edit=null;IT.del=null;save();renderInvTab();toast('Invoice deleted.',function(){restoreSnap(before)})}
   });
   $('#btnInvoice').onclick=openInv;
   $('#invRoot').addEventListener('click',function(ev){
@@ -988,16 +988,16 @@ function renderSheet(){
   var root=$('#sheetRoot');
   if(!SH.open){root.innerHTML='';return}
   var h='<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT">'
-    +'<div class="row-between"><h2 id="sheetT">Ajustes</h2><button class="btn ghost small" type="button" data-sa="close" id="sheetClose">Cerrar</button></div>';
+    +'<div class="row-between"><h2 id="sheetT">Settings</h2><button class="btn ghost small" type="button" data-sa="close" id="sheetClose">Close</button></div>';
   h+=''
-    +'<h2 style="margin:24px 0 0;font-size:15px">Copia de seguridad</h2>'
-    +'<p class="sub" style="margin:4px 0 0">Los datos se guardan en este navegador. Descarga una copia de vez en cuando por si cambias de móvil o borras los datos del navegador.</p>'
+    +'<h2 style="margin:24px 0 0;font-size:15px">Backup</h2>'
+    +'<p class="sub" style="margin:4px 0 0">Your data is stored on this device. Save a backup now and then in case you change phone or clear your browser data.</p>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
-    +'<button class="btn" type="button" data-sa="backup">Guardar copia</button>'
-    +'<label class="btn ghost" for="restoreFile" style="display:inline-flex;align-items:center;cursor:pointer">Restaurar copia</label>'
+    +'<button class="btn" type="button" data-sa="backup">Save backup</button>'
+    +'<label class="btn ghost" for="restoreFile" style="display:inline-flex;align-items:center;cursor:pointer">Restore backup</label>'
     +'<input id="restoreFile" type="file" accept=".json,application/json" style="position:absolute;opacity:0;width:1px;height:1px">'
     +'</div>'
-    +(hasDemo()?'<h2 style="margin:24px 0 0;font-size:15px">Datos de ejemplo</h2><button class="btn ghost" type="button" data-sa="cleardemo" style="margin-top:8px">Borrar ejemplos y empezar</button>':'')
+    +(hasDemo()?'<h2 style="margin:24px 0 0;font-size:15px">Sample data</h2><button class="btn ghost" type="button" data-sa="cleardemo" style="margin-top:8px">Clear samples and start</button>':'')
     +'</div></div>';
   root.innerHTML=h;
 }
@@ -1008,25 +1008,25 @@ function backup(){
   var fname='nereas-guest-list-'+nightDate()+'.json',text=JSON.stringify(S,null,2);
   if(DL){
     DL.save({filename:fname,data:text})
-      .then(function(){toast('Copia guardada')})
-      .catch(function(e){if(e&&e.code==='declined')return;toast('No se pudo guardar la copia.')});
+      .then(function(){toast('Backup saved')})
+      .catch(function(e){if(e&&e.code==='declined')return;toast('Could not save the backup.')});
     return;
   }
   // fuera del visor (app instalada): hoja de compartir del iPhone, o descarga normal
   try{
     var file=new File([text],fname,{type:'application/json'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      navigator.share({files:[file],title:'Copia de Nerea’s Guest List'})
-        .then(function(){toast('Copia guardada')})
-        .catch(function(e){if(e&&e.name==='AbortError')return;toast('No se pudo guardar la copia.')});
+      navigator.share({files:[file],title:'Nerea’s Guest List backup'})
+        .then(function(){toast('Backup saved')})
+        .catch(function(e){if(e&&e.name==='AbortError')return;toast('Could not save the backup.')});
       return;
     }
   }catch(e){}
   try{
     var url=URL.createObjectURL(new Blob([text],{type:'application/json'})),a=document.createElement('a');
     a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
-    setTimeout(function(){URL.revokeObjectURL(url)},4000);toast('Copia descargada');
-  }catch(e){toast('No se pudo guardar la copia.')}
+    setTimeout(function(){URL.revokeObjectURL(url)},4000);toast('Backup downloaded');
+  }catch(e){toast('Could not save the backup.')}
 }
 function restoreFile(file){
   if(!file)return;
@@ -1035,10 +1035,10 @@ function restoreFile(file){
     try{
       var o=migrate(JSON.parse(rd.result));if(!o)throw new Error('formato');
       var before=snap();S=o;save();LV.edit=null;SH.open=false;renderSheet();renderAll();
-      toast('Copia restaurada: '+o.entries.length+' guests y '+o.clubs.length+' discotecas.',function(){restoreSnap(before)});
-    }catch(e){toast('Ese archivo no es una copia válida.')}
+      toast('Backup restored: '+o.entries.length+' guests and '+o.clubs.length+' venues.',function(){restoreSnap(before)});
+    }catch(e){toast('That file is not a valid backup.')}
   };
-  rd.onerror=function(){toast('No se pudo leer el archivo.')};
+  rd.onerror=function(){toast('Could not read the file.')};
   rd.readAsText(file);
 }
 
@@ -1046,20 +1046,20 @@ function restoreFile(file){
 function renderClubs(){
   var out=$('#clubsOut');if(!out)return;
   var h='';
-  if(!S.clubs.length)h+='<div class="card empty"><b>Aún no hay discotecas</b>Añade la primera: lo que te pagan por persona de lista, el % de las mesas y el bonus.</div>';
+  if(!S.clubs.length)h+='<div class="card empty"><b>No venues yet</b>Add your first one: what they pay per list guest, the table % and the bonus.</div>';
   S.clubs.forEach(function(c){
     var id=esc(c.id),n=S.entries.filter(function(e){return e.clubId===c.id}).length;
     h+='<div class="card"><div class="club-edit" style="border-top:0;padding:0">'
-      +'<label class="f name" for="cn-'+id+'">Nombre de la discoteca<input class="in" id="cn-'+id+'" type="text" data-cid="'+id+'" data-cf="name" value="'+esc(c.name)+'"></label>'
-      +'<label class="f" for="cl-'+id+'">Lista (£ por persona)<input class="in num" id="cl-'+id+'" type="number" inputmode="decimal" min="0" step="0.5" data-cid="'+id+'" data-cf="rateLista" value="'+esc(c.rateLista||0)+'"></label>'
-      +'<label class="f" for="cm-'+id+'">Mesa (% del consumo)<input class="in num" id="cm-'+id+'" type="number" inputmode="decimal" min="0" max="100" step="0.5" data-cid="'+id+'" data-cf="pctMesa" value="'+esc(c.pctMesa||0)+'"></label>'
-      +'<label class="f" for="cb-'+id+'">Bonus cada X personas<input class="in num" id="cb-'+id+'" type="number" inputmode="numeric" min="0" step="1" data-cid="'+id+'" data-cf="bonusEvery" value="'+esc(c.bonusEvery||0)+'"></label>'
+      +'<label class="f name" for="cn-'+id+'">Venue name<input class="in" id="cn-'+id+'" type="text" data-cid="'+id+'" data-cf="name" value="'+esc(c.name)+'"></label>'
+      +'<label class="f" for="cl-'+id+'">List (£ per person)<input class="in num" id="cl-'+id+'" type="number" inputmode="decimal" min="0" step="0.5" data-cid="'+id+'" data-cf="rateLista" value="'+esc(c.rateLista||0)+'"></label>'
+      +'<label class="f" for="cm-'+id+'">Table (% of spend)<input class="in num" id="cm-'+id+'" type="number" inputmode="decimal" min="0" max="100" step="0.5" data-cid="'+id+'" data-cf="pctMesa" value="'+esc(c.pctMesa||0)+'"></label>'
+      +'<label class="f" for="cb-'+id+'">Bonus every X people<input class="in num" id="cb-'+id+'" type="number" inputmode="numeric" min="0" step="1" data-cid="'+id+'" data-cf="bonusEvery" value="'+esc(c.bonusEvery||0)+'"></label>'
       +'<label class="f" for="ca-'+id+'">Bonus (£)<input class="in num" id="ca-'+id+'" type="number" inputmode="decimal" min="0" step="0.5" data-cid="'+id+'" data-cf="bonusAmount" value="'+esc(c.bonusAmount||0)+'"></label>'
-      +'<div class="rm"><span class="sub">'+plural(n,'guest apuntado','guests apuntados')+'</span>'
-      +(SH.confirm===c.id?'<button class="btn danger small" type="button" data-ca="cdel2" data-cid="'+id+'">Sí, eliminar</button>':'<button class="btn ghost small" type="button" data-ca="cdel" data-cid="'+id+'">Eliminar</button>')
+      +'<div class="rm"><span class="sub">'+plural(n,'guest logged','guests logged')+'</span>'
+      +(SH.confirm===c.id?'<button class="btn danger small" type="button" data-ca="cdel2" data-cid="'+id+'">Yes, remove</button>':'<button class="btn ghost small" type="button" data-ca="cdel" data-cid="'+id+'">Remove</button>')
       +'</div></div></div>';
   });
-  h+='<button class="btn" type="button" data-ca="cadd" style="width:100%">Añadir discoteca</button>';
+  h+='<button class="btn" type="button" data-ca="cadd" style="width:100%">Add venue</button>';
   out.innerHTML=h;
   augmentClubs(out);
 }
@@ -1068,21 +1068,21 @@ function bindClubs(){
     var b=ev.target.closest('[data-ca]');if(!b)return;
     var a=b.dataset.ca,id=b.dataset.cid;
     if(a==='cadd'){
-      var nc={id:uid(),name:'Nueva discoteca',rateLista:0,pctMesa:0,bonusEvery:0,bonusAmount:0};S.clubs.push(nc);save();renderClubs();
+      var nc={id:uid(),name:'New venue',rateLista:0,pctMesa:0,bonusEvery:0,bonusAmount:0};S.clubs.push(nc);save();renderClubs();
       var inp=document.getElementById('cn-'+nc.id);if(inp){inp.focus();inp.select()}
     }
     else if(a==='cdel'){SH.confirm=id;renderClubs()}
     else if(a==='cdel2'){
       var used=S.entries.filter(function(e){return e.clubId===id}).length;
-      if(used){SH.confirm=null;renderClubs();toast('Esa discoteca tiene '+used+' guests apuntados. Elimínalos primero.');return}
+      if(used){SH.confirm=null;renderClubs();toast('That venue has '+used+' guests logged. Delete them first.');return}
       var before=snap();S.clubs=S.clubs.filter(function(c){return c.id!==id});SH.confirm=null;save();renderClubs();
-      toast('Discoteca eliminada.',function(){restoreSnap(before)});
+      toast('Venue removed.',function(){restoreSnap(before)});
     }
   });
   $('#clubsOut').addEventListener('change',function(ev){
     var t=ev.target,f=t.dataset&&t.dataset.cf;if(!f)return;
     var c=club(t.dataset.cid);if(!c)return;
-    if(f==='name'){c.name=t.value.trim()||'Sin nombre';t.value=c.name}
+    if(f==='name'){c.name=t.value.trim()||'Unnamed';t.value=c.name}
     else{var v=parseFloat(t.value);c[f]=isNaN(v)||v<0?0:v;t.value=c[f]}
     delete c.demo;save();
   });
@@ -1114,8 +1114,8 @@ function bindShell(){
 
 function renderBanners(){
   var h='';
-  if(hasDemo())h+='<div class="banner"><span>Estás viendo datos de ejemplo.</span><button class="btn small ghost" type="button" data-ba="cleardemo">Borrar ejemplos y empezar</button></div>';
-  if(!storageOk)h+='<div class="banner warn"><span>Este navegador no deja guardar datos. Descarga una copia desde Ajustes antes de cerrar.</span><button class="btn small ghost" type="button" data-ba="settings">Abrir Ajustes</button></div>';
+  if(hasDemo())h+='<div class="banner"><span>You are viewing sample data.</span><button class="btn small ghost" type="button" data-ba="cleardemo">Clear samples and start</button></div>';
+  if(!storageOk)h+='<div class="banner warn"><span>This browser can’t save data. Save a backup from Settings before closing.</span><button class="btn small ghost" type="button" data-ba="settings">Open Settings</button></div>';
   $('#banners').innerHTML=h;
   $('#banners').style.display=h?'':'none';
 }
