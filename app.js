@@ -981,6 +981,125 @@ function bindInvoice(){
   document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&IV.open){if(IV.rec){IV.rec=null;IV.open=false}else if(IV.view){IV.view=null}else IV.open=false;renderInv()}});
 }
 
+/* =========================== TALLY (photo per venue + night) =========================== */
+var TY={items:[],key:'',view:null,del:false,urls:[]};
+var tdb=null;
+function tOpen(){
+  return new Promise(function(res,rej){
+    if(tdb)return res(tdb);
+    try{
+      var r=indexedDB.open('nereas-guest-list.files',1);
+      r.onupgradeneeded=function(){var s=r.result.createObjectStore('tally',{keyPath:'id'});s.createIndex('key','key')};
+      r.onsuccess=function(){tdb=r.result;res(tdb)};
+      r.onerror=function(){rej(r.error)};
+    }catch(e){rej(e)}
+  });
+}
+function tReq(mode,fn){
+  return tOpen().then(function(d){return new Promise(function(res,rej){
+    var tx=d.transaction('tally',mode),q=fn(tx.objectStore('tally'));
+    tx.oncomplete=function(){res(q&&q.result)};tx.onerror=function(){rej(tx.error)};tx.onabort=function(){rej(tx.error)};
+  })});
+}
+function tList(key){return tReq('readonly',function(s){return s.index('key').getAll(key)}).then(function(L){return (L||[]).sort(function(a,b){return a.ts-b.ts})})}
+function tPut(o){return tReq('readwrite',function(s){return s.put(o)})}
+function tDel(id){return tReq('readwrite',function(s){return s.delete(id)})}
+function tBox(){
+  var b=$('#tallyBox');
+  if(!b){b=document.createElement('div');b.id='tallyBox';var s=$('#sumBar');s.parentNode.insertBefore(b,s.nextSibling)}
+  return b;
+}
+function tCompress(file){
+  return new Promise(function(res){
+    var done=function(b){res(b||file)};
+    try{
+      var img=new Image(),u=URL.createObjectURL(file);
+      img.onload=function(){
+        try{
+          var w=img.naturalWidth,h=img.naturalHeight,k=Math.min(1,2000/Math.max(w,h)),c=document.createElement('canvas');
+          c.width=Math.round(w*k);c.height=Math.round(h*k);
+          c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+          URL.revokeObjectURL(u);
+          c.toBlob(function(b){done(b&&b.size<file.size*1.2?b:file)},'image/jpeg',0.85);
+        }catch(e){URL.revokeObjectURL(u);done(file)}
+      };
+      img.onerror=function(){URL.revokeObjectURL(u);done(file)};
+      img.src=u;
+    }catch(e){done(file)}
+  });
+}
+function renderTally(){
+  var box=tBox();
+  if(TAB!=='lists'||!S.clubs.length||!LV.club){box.innerHTML='';return}
+  var key=LV.club+'|'+LV.date;TY.key=key;
+  tList(key).then(function(L){if(TY.key!==key)return;TY.items=L;drawTally()}).catch(function(){if(TY.key!==key)return;TY.items=[];drawTally(true)});
+}
+function drawTally(err){
+  var box=tBox();
+  TY.urls.forEach(function(u){URL.revokeObjectURL(u)});TY.urls=[];
+  var h='<div class="card tybox"><div class="row-between" style="flex-wrap:nowrap"><div style="min-width:0"><b>Tally</b><div class="sub">Venue’s sheet of who got in</div></div>'
+    +'<label class="btn ghost small" for="tyFile" style="cursor:pointer;flex-shrink:0;white-space:nowrap">📷 Add</label>'
+    +'<input id="tyFile" type="file" accept="image/*" multiple style="position:absolute;opacity:0;width:1px;height:1px"></div>';
+  if(err)h+='<div class="sub" style="margin-top:8px;color:var(--crit)">Photos can’t be stored on this browser.</div>';
+  if(TY.items.length){
+    h+='<div class="ty-grid">'+TY.items.map(function(x){
+      var u=URL.createObjectURL(x.blob);TY.urls.push(u);
+      return '<button class="ty-th" type="button" data-ty="open" data-id="'+esc(x.id)+'" aria-label="Open tally photo"><img alt="Tally" src="'+u+'"></button>';
+    }).join('')+'</div>';
+  }
+  box.innerHTML=h+'</div>';
+}
+function openTy(id){
+  var x=TY.items.filter(function(i){return i.id===id})[0];if(!x)return;
+  TY.view=id;TY.del=false;
+  var root=$('#tyView');if(!root){root=document.createElement('div');root.id='tyView';document.body.appendChild(root)}
+  if(TY.vurl)URL.revokeObjectURL(TY.vurl);
+  TY.vurl=URL.createObjectURL(x.blob);
+  root.innerHTML='<div class="ty-view"><div class="ty-bar"><button class="btn small" type="button" data-ty="close">‹ Close</button>'
+    +'<span class="ty-t">'+esc(fmtLong(LV.date))+'</span>'
+    +'<button class="btn danger small" type="button" data-ty="del">Delete</button></div>'
+    +'<div class="ty-img"><img alt="Tally" src="'+TY.vurl+'"></div></div>';
+}
+function closeTy(){
+  var root=$('#tyView');if(root)root.innerHTML='';
+  if(TY.vurl){URL.revokeObjectURL(TY.vurl);TY.vurl=null}
+  TY.view=null;TY.del=false;
+}
+function addTally(files){
+  var key=LV.club+'|'+LV.date,list=Array.prototype.slice.call(files||[]).filter(function(f){return /^image\//.test(f.type)||!f.type});
+  if(!list.length)return;
+  var p=Promise.resolve(),n=0;
+  list.forEach(function(f){
+    p=p.then(function(){return tCompress(f)}).then(function(b){
+      return tPut({id:uid()+uid(),key:key,name:f.name||'tally',type:b.type||'image/jpeg',ts:Date.now()+n++,blob:b});
+    });
+  });
+  p.then(function(){
+    try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+    toast(list.length>1?'Tally photos saved.':'Tally photo saved.');renderTally();
+  }).catch(function(){toast('Could not save the photo.')});
+}
+var _renderLists=renderLists;
+renderLists=function(){_renderLists();renderTally()};
+(function(){
+  document.addEventListener('change',function(ev){
+    var t=ev.target;
+    if(t&&t.id==='tyFile'){addTally(t.files);t.value=''}
+  });
+  document.addEventListener('click',function(ev){
+    var b=ev.target.closest&&ev.target.closest('[data-ty]');if(!b)return;
+    var a=b.dataset.ty;
+    if(a==='open')openTy(b.dataset.id);
+    else if(a==='close')closeTy();
+    else if(a==='del'){
+      if(!TY.del){TY.del=true;b.textContent='Tap again to delete';return}
+      var id=TY.view;closeTy();
+      tDel(id).then(function(){toast('Tally photo deleted.');renderTally()}).catch(function(){toast('Could not delete the photo.')});
+    }
+  });
+  document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&TY.view)closeTy()});
+})();
+
 /* =========================== AJUSTES, COPIA, ARRANQUE =========================== */
 var SH={open:false,confirm:null}, DL=null;
 
