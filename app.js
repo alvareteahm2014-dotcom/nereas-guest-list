@@ -286,7 +286,7 @@ function topCard(title,sub,rows,kind){
     h+='<li'+(bad?' class="badrow" role="button" tabindex="0" data-bad="'+bid+'" aria-expanded="'+(!!open)+'"':'')+'><span class="rk num">'+(kind==='g'&&i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="tn">'+(kind==='c'||kind==='bc'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
     if(open){
       h+='<li class="baddet"><ul>'+x.ev.slice().sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:0}).map(function(v){
-        var c=club(v.c);return '<li><b>'+esc(v.k)+(v.n>1?' ×'+v.n:'')+'</b> · '+esc(fmtLong(v.d))+' · '+esc(c?c.name:'Unknown venue')+'</li>'}).join('')+'</ul></li>';
+        var c=club(v.c);return '<li data-go="'+esc(v.d+'|'+v.c)+'" role="button" tabindex="0" style="cursor:pointer"><b>'+esc(v.k)+(v.n>1?' ×'+v.n:'')+'</b> · '+esc(fmtLong(v.d))+' · '+esc(c?c.name:'Unknown venue')+'</li>'}).join('')+'</ul></li>';
     }
   });
   return h+'</ol></div>';
@@ -387,7 +387,7 @@ function renderDash(){
     if(openNT){
       h+='<div class="card"><ul style="list-style:none;margin:0;padding:0">'+list.filter(function(e){return lossT(e)==='notally'}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0}).map(function(e){
         var c=club(e.clubId),n=lossN(e);
-        return '<li style="padding:8px 0;border-top:1px solid var(--grid)"><b>'+esc(e.name)+'</b>'+(n>1?' ×'+n:'')+'<small style="display:block;color:var(--ink2)">'+esc(fmtLong(e.date))+' · '+esc(c?c.name:'Unknown venue')+'</small></li>'}).join('')+'</ul></div>';
+        return '<li data-go="'+esc(e.date+'|'+e.clubId)+'" role="button" tabindex="0" style="padding:8px 0;border-top:1px solid var(--grid);cursor:pointer"><b>'+esc(e.name)+'</b>'+(n>1?' ×'+n:'')+'<small style="display:block;color:var(--ink2)">'+esc(fmtLong(e.date))+' · '+esc(c?c.name:'Unknown venue')+'</small></li>'}).join('')+'</ul></div>';
     }
   }else{
     var neto=t.gen-t.ret,prevNeto=t.prevGen-t.prevRet,rate100=t.heads?Math.round(t.inHeads/t.heads*100):0;
@@ -466,6 +466,11 @@ function markPaid(prom){
   toast('Payments to '+prom+' marked as paid.',function(){restoreSnap(before)});
 }
 
+function goList(v){
+  var p=v.split('|');if(!p[0]||!club(p[1]))return;
+  LV.date=p[0];LV.club=p[1];LV.edit=null;LV.confirmDel=null;
+  setTab('lists');window.scrollTo(0,0);
+}
 function bindDash(){
   $('#periodChips').addEventListener('click',function(ev){
     var b=ev.target.closest('.chip');if(!b)return;
@@ -482,6 +487,7 @@ function bindDash(){
   $('#d-to').onchange=function(){DV.to=this.value;renderDashFilters();renderDash()};
   $('#dashOut').addEventListener('click',function(ev){
     var rk=ev.target.closest('[data-rank]');if(rk){DV.rank=rk.dataset.rank;DV.openBad='';renderDash();return}
+    var go=ev.target.closest('[data-go]');if(go){goList(go.dataset.go);return}
     if(ev.target.closest('[data-nt]')){DV.openNT=!DV.openNT;renderDash();return}
     var bd=ev.target.closest('[data-bad]');if(bd){DV.openBad=DV.openBad===bd.dataset.bad?'':bd.dataset.bad;renderDash();return}
     var p=ev.target.closest('[data-act="paid"]');if(p){markPaid(p.dataset.prom);return}
@@ -493,6 +499,7 @@ function bindDash(){
   });
   $('#dashOut').addEventListener('keydown',function(ev){
     if(ev.key!=='Enter'&&ev.key!==' ')return;
+    var go=ev.target.closest&&ev.target.closest('[data-go]');if(go){ev.preventDefault();goList(go.dataset.go);return}
     var nt=ev.target.closest&&ev.target.closest('[data-nt]');if(nt){ev.preventDefault();DV.openNT=!DV.openNT;renderDash();var t2=document.querySelector('[data-nt]');if(t2)t2.focus();return}
     var bd=ev.target.closest&&ev.target.closest('[data-bad]');if(!bd)return;
     ev.preventDefault();DV.openBad=DV.openBad===bd.dataset.bad?'':bd.dataset.bad;renderDash();
