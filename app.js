@@ -557,7 +557,7 @@ function renderLists(){
     var h=heads(e),ln=lossN(e),lt=lossT(e),L=h-ln;
     if(lt==='stolen')stl+=ln;if(lt==='notally')nt+=ln;if(lt==='noshow')ns+=ln;
     if(e.type==='mesa'){if(lt!=='stolen'&&lt!=='notally'){mesas++;if(e.entered&&L>0)mesasIn++}return}
-    tot+=h-(lt==='stolen'||lt==='notally'?ln:0);
+    tot+=h;
     if(L>0){if(e.rejected)rej+=L;else if(!e.entered&&e.date<nightDate())ns+=L;if(e.entered)inn+=L}
   });
   var s='<span><b class="num">'+inn+'</b> of '+tot+' in</span>';
