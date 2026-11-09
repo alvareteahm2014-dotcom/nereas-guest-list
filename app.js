@@ -386,9 +386,9 @@ function renderDash(){
      +(t.mesas>0?'<span>⭐ <b class="num">'+plural(t.mesas,'table','tables')+'</b></span>':'')
      +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> if pending guests get in</span>':'')+'</div></div>';
     h+='<div class="tiles">'
-     +'<div class="tile"><div class="v num">'+(DV.status==='notally'?(t.nt||0):t.heads)+'</div><div class="l">Logged</div></div>'
+     +'<div class="tile"><div class="v num">'+(DV.status==='notally'?(t.nt||0):t.heads)+'</div><div class="l">Guest</div></div>'
      +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Got in</div><div class="d">'+[t.rej?t.rej+' rejected':'',t.ns?t.ns+' not show':'',t.stolen?t.stolen+' stolen':''].filter(Boolean).join(' · ')+'</div></div>'
-     +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entry rate</div><div class="d">of those logged</div></div></div>';
+     +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entry rate</div><div class="d">of total Guest</div></div></div>';
   }
   var tp=topLists(),wr=DV.rank==='worst';
   h+='<div class="chips" role="group" aria-label="Ranking"><button class="chip" type="button" data-rank="best" aria-pressed="'+(!wr)+'">🏆 Best</button><button class="chip" type="button" data-rank="worst" aria-pressed="'+wr+'">❌ Not show / Rejected</button><button class="chip" type="button" data-rank="stolen" aria-pressed="'+(DV.rank==='stolen')+'">🕵️ Stolen</button></div>';
