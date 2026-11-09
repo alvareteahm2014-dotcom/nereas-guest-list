@@ -217,7 +217,7 @@ function totals(list,useBonus){
   var BM=useBonus?bonusMap():{},seen={};
   var t={heads:0,inHeads:0,gen:0,ret:0,retPend:0,prevGen:0,prevRet:0,bonus:0,mesas:0,clubs:{},prom:{},days:{},n:list.length};
   list.forEach(function(e){
-    var h=heads(e),a=amt(e),p=pay(e),lt=lossT(e),ln=lossN(e),L=h-ln,hr=h-(lt==='stolen'?ln:0);
+    var h=heads(e),a=amt(e),p=pay(e),lt=lossT(e),ln=lossN(e),L=h-ln,hr=e.type==='mesa'?0:h-(lt==='stolen'?ln:0);
     t.heads+=hr;
     var c=t.clubs[e.clubId]||(t.clubs[e.clubId]={gen:0,ret:0,heads:0,inH:0,bonus:0});
     c.heads+=hr;
@@ -227,7 +227,8 @@ function totals(list,useBonus){
     if(lt==='noshow')t.ns=(t.ns||0)+ln;
     if(L>0){
       if(e.entered){
-        t.inHeads+=L;t.gen+=a;t.ret+=p;c.gen+=a;c.ret+=p;c.inH+=L;t.days[e.date]+=L;
+        if(e.type!=='mesa'){t.inHeads+=L;c.inH+=L}
+        t.gen+=a;t.ret+=p;c.gen+=a;c.ret+=p;t.days[e.date]+=L;
         if(e.type==='mesa')t.mesas++;
         if(e.type==='pago'){
           var k=e.promoter||'Unspecified';
