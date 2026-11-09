@@ -53,16 +53,22 @@ function restoreSnap(s){S=migrate(JSON.parse(s));save();renderAll()}
 /* ---------- cálculos ---------- */
 function club(id){return S.clubs.filter(function(c){return c.id===id})[0]}
 function heads(e){return e.n||1}
+/* lost guests: e.loss={t:'stolen'|'notally'|'noshow',all:bool,n:int,prom:string} */
+function lossT(e){return e.loss&&e.loss.t||''}
+function lossN(e){var L=e.loss;if(!L||!L.t)return 0;var h=heads(e);return L.all?h:Math.max(0,Math.min(h,+L.n||0))}
+function live(e){return heads(e)-lossN(e)}
+function lostAll(e){var n=lossN(e);return n>0&&n>=heads(e)}
 function hasSplit(e){return (e.m||0)+(e.f||0)===e.n&&e.n>0}
 function rate(c){return c?(+c.rateLista||0):0}
 function hasNum(v){return v!=null&&v!==''&&!isNaN(+v)}
 function amt(e){
   var x=hasNum(e.extra)?+e.extra:0;
   if(x>0&&String(e.name).trim().toLowerCase()==='host')return x;
+  if(lostAll(e))return 0;
   if(hasNum(e.amount))return +e.amount+x;
   var c=club(e.clubId);
   if(e.type==='mesa')return (c?(+c.pctMesa||0)/100*(hasNum(e.spend)?+e.spend:0):0)+x;
-  return rate(c)*heads(e)+x;
+  return rate(c)*live(e)+x;
 }
 function pay(e){return e.type==='pago'?(hasNum(e.payout)?+e.payout:amt(e)):0}
 function eur(n){n=n||0;var a=Math.abs(n),fr=Math.abs(a-Math.round(a))>0.004;return (n<0?'−':'')+'£'+new Intl.NumberFormat('en-GB',{minimumFractionDigits:fr?2:0,maximumFractionDigits:2}).format(a)}
@@ -114,7 +120,7 @@ function upsertProfile(name,patch){
 /* bonus: cada X personas que entran en una discoteca el mismo día */
 function bonusMap(){
   var cnt={},out={};
-  S.entries.forEach(function(e){if(!e.entered||e.type==='mesa')return;var k=e.clubId+'|'+e.date;cnt[k]=(cnt[k]||0)+heads(e)});
+  S.entries.forEach(function(e){if(!e.entered||e.type==='mesa')return;var k=e.clubId+'|'+e.date;cnt[k]=(cnt[k]||0)+live(e)});
   Object.keys(cnt).forEach(function(k){
     var c=club(k.split('|')[0]);
     if(c&&c.bonusEvery>0&&c.bonusAmount>0){var x=Math.floor(cnt[k]/c.bonusEvery)*c.bonusAmount;if(x>0)out[k]=x}
@@ -192,16 +198,18 @@ function nightsRange(){
   if(P==='rango')return {a:DV.from||'0000-00-00',b:DV.to||'9999-99-99',label:'Custom range'};
   return {a:'0000-00-00',b:'9999-99-99',label:'All time'};
 }
-function statusOf(e){return e.entered?'in':e.rejected?'rej':e.date<nightDate()?'ns':'pend'}
+function statusOf(e){var t=lossT(e);if(t&&lostAll(e))return t==='noshow'?'ns':t==='stolen'?'stolen':'notally';return e.entered?'in':e.rejected?'rej':e.date<nightDate()?'ns':'pend'}
 function dFiltered(){
   var r=nightsRange();
   return S.entries.filter(function(e){
     if(e.date<r.a||e.date>r.b)return false;
     if(DV.club!=='all'&&e.clubId!==DV.club)return false;
     if(DV.type!=='all'&&e.type!==DV.type)return false;
-    if(DV.status==='in'&&!e.entered)return false;
+    if(lossT(e)==='notally'&&lostAll(e))return false;
+    if(DV.status==='in'&&(!e.entered||lostAll(e)))return false;
     if(DV.status==='out'&&statusOf(e)!=='pend')return false;
-    if(DV.status==='ns'&&statusOf(e)!=='ns')return false;
+    if(DV.status==='ns'&&statusOf(e)!=='ns'&&lossT(e)!=='noshow')return false;
+    if(DV.status==='stolen'&&lossT(e)!=='stolen')return false;
     if(DV.status==='rej'&&!e.rejected)return false;
     return true;
   });
@@ -210,21 +218,25 @@ function totals(list,useBonus){
   var BM=useBonus?bonusMap():{},seen={};
   var t={heads:0,inHeads:0,gen:0,ret:0,retPend:0,prevGen:0,prevRet:0,bonus:0,mesas:0,clubs:{},prom:{},days:{},n:list.length};
   list.forEach(function(e){
-    var h=heads(e),a=amt(e),p=pay(e);
-    t.heads+=h;
+    var h=heads(e),a=amt(e),p=pay(e),lt=lossT(e),ln=lossN(e),L=h-ln,hr=h-(lt==='notally'||lt==='stolen'?ln:0);
+    t.heads+=hr;
     var c=t.clubs[e.clubId]||(t.clubs[e.clubId]={gen:0,ret:0,heads:0,inH:0,bonus:0});
-    c.heads+=h;
+    c.heads+=hr;
     t.days[e.date]=t.days[e.date]||0;
-    if(e.entered){
-      t.inHeads+=h;t.gen+=a;t.ret+=p;c.gen+=a;c.ret+=p;c.inH+=h;t.days[e.date]+=h;
-      if(e.type==='mesa')t.mesas++;
-      if(e.type==='pago'){
-        var k=e.promoter||'Unspecified';
-        var pr=t.prom[k]||(t.prom[k]={total:0,pend:0,n:0});
-        pr.total+=p;pr.n++;
-        if(!e.paid){pr.pend+=p;t.retPend+=p}
-      }
-    }else if(e.rejected){t.rej=(t.rej||0)+h}else if(statusOf(e)==='ns'){t.ns=(t.ns||0)+h}else{t.prevGen+=a;t.prevRet+=p}
+    if(lt==='stolen')t.stolen=(t.stolen||0)+ln;
+    if(lt==='noshow')t.ns=(t.ns||0)+ln;
+    if(L>0){
+      if(e.entered){
+        t.inHeads+=L;t.gen+=a;t.ret+=p;c.gen+=a;c.ret+=p;c.inH+=L;t.days[e.date]+=L;
+        if(e.type==='mesa')t.mesas++;
+        if(e.type==='pago'){
+          var k=e.promoter||'Unspecified';
+          var pr=t.prom[k]||(t.prom[k]={total:0,pend:0,n:0});
+          pr.total+=p;pr.n++;
+          if(!e.paid){pr.pend+=p;t.retPend+=p}
+        }
+      }else if(e.rejected){t.rej=(t.rej||0)+L}else if(e.date<nightDate()){t.ns=(t.ns||0)+L}else{t.prevGen+=a;t.prevRet+=p}
+    }
     var bk=e.clubId+'|'+e.date;
     if(BM[bk]&&!seen[bk]){seen[bk]=1;t.gen+=BM[bk];t.bonus+=BM[bk];c.gen+=BM[bk];c.bonus+=BM[bk]}
   });
@@ -233,20 +245,29 @@ function totals(list,useBonus){
 
 /* Top 10: guests (lista/PAGO) por personas que han entrado y veces que repiten; clientes (mesas) */
 function topLists(){
-  var r=nightsRange(),G={},C={};
+  var r=nightsRange(),G={},C={},P={};
   S.entries.forEach(function(e){
     if(e.date<r.a||e.date>r.b||isHostEntry(e))return;
     if(DV.club!=='all'&&e.clubId!==DV.club)return;
-    var st=statusOf(e);if(st==='pend')return;
+    var lt=lossT(e),ln=lossN(e);
+    if(lt==='stolen'&&ln>0){
+      var pn=(e.loss.prom||'').trim(),pk=norm(pn)||'?',p=P[pk]||(P[pk]={name:pn||'Unknown',people:0,times:0,last:''});
+      p.people+=ln;p.times++;if(e.date>p.last){p.last=e.date;if(pn)p.name=pn}
+    }
+    var st=statusOf(e);
+    if(st==='stolen'||st==='notally')return;
+    if(st==='pend'&&!(lt==='noshow'&&ln>0))return;
     var k=pkey(e.name),M=e.type==='mesa'?C:G;
     var x=M[k]||(M[k]={name:e.name,people:0,visits:0,spend:0,fee:0,last:'',rej:0,ns:0});
-    if(st==='in'){x.people+=heads(e);x.visits++;x.fee+=amt(e);if(hasNum(e.spend))x.spend+=+e.spend}
-    else if(st==='rej')x.rej++;else x.ns++;
+    if(st==='in'){x.people+=live(e);x.visits++;x.fee+=amt(e);if(hasNum(e.spend))x.spend+=+e.spend}
+    else if(st==='rej')x.rej++;else if(st==='ns'&&lt!=='noshow')x.ns++;
+    if(lt==='noshow'&&ln>0)x.ns+=ln;
     if(e.date>x.last){x.last=e.date;x.name=e.name}
   });
   function arr(M,f,w){return Object.keys(M).map(function(k){return M[k]}).filter(function(x){return w?x.rej+x.ns>0:x.visits>0}).sort(f).slice(0,10)}
   function bad(a,b){return (b.rej+b.ns)-(a.rej+a.ns)||b.rej-a.rej||a.name.localeCompare(b.name)}
   return {
+    stolen:Object.keys(P).map(function(k){return P[k]}).sort(function(a,b){return b.people-a.people||b.times-a.times||a.name.localeCompare(b.name)}).slice(0,10),
     badGuests:arr(G,bad,1),badClients:arr(C,bad,1),
     guests:arr(G,function(a,b){return b.people-a.people||b.visits-a.visits||a.name.localeCompare(b.name)}),
     clients:arr(C,function(a,b){return b.visits-a.visits||b.spend-a.spend||b.people-a.people||a.name.localeCompare(b.name)})
@@ -257,9 +278,9 @@ function topCard(title,sub,rows,kind){
   if(!rows.length)return h+'<div class="empty" style="padding:18px 8px">No data in this period.</div></div>';
   h+='<ol class="toplist">';
   rows.forEach(function(x,i){
-    var line=kind==='bg'||kind==='bc'?(x.rej?plural(x.rej,'rejection','rejections'):'')+(x.rej&&x.ns?' · ':'')+(x.ns?x.ns+' not show':'')+(x.visits?' · '+plural(x.visits,'entry','entries'):''):kind==='g'?plural(x.visits,'visit','visits')+(x.visits>1?' · repeat':'')
+    var line=kind==='s'?plural(x.times,'entry','entries')+' · last '+fmtShort(x.last):kind==='bg'||kind==='bc'?(x.rej?plural(x.rej,'rejection','rejections'):'')+(x.rej&&x.ns?' · ':'')+(x.ns?x.ns+' not show':'')+(x.visits?' · '+plural(x.visits,'entry','entries'):''):kind==='g'?plural(x.visits,'visit','visits')+(x.visits>1?' · repeat':'')
       :plural(x.visits,'table','tables')+' · '+plural(x.people,'person','people')+(x.spend>0?' · spend '+eur(x.spend):'');
-    var val=kind==='bg'||kind==='bc'?'<b class="num">'+(x.rej+x.ns)+'</b><span>times</span>':kind==='g'?'<b class="num">'+x.people+'</b><span>people</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'table':'tables')+'</span>';
+    var val=kind==='s'?'<b class="num">'+x.people+'</b><span>'+(x.people===1?'guest':'guests')+'</span>':kind==='bg'||kind==='bc'?'<b class="num">'+(x.rej+x.ns)+'</b><span>times</span>':kind==='g'?'<b class="num">'+x.people+'</b><span>people</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'table':'tables')+'</span>';
     h+='<li><span class="rk num">'+(kind==='g'&&i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="tn">'+(kind==='c'||kind==='bc'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
   });
   return h+'</ol></div>';
@@ -275,7 +296,7 @@ function monthSummary(){
     if(DV.club!=='all'&&e.clubId!==DV.club)return;
     if(DV.type!=='all'&&e.type!==DV.type)return;
     var m=mo(e.date.slice(0,7)),a=amt(e),p=pay(e),c=cb(m,e.clubId);
-    m.gen+=a;m.ret+=p;m.people+=heads(e);c.net+=a-p;c.people+=heads(e);
+    m.gen+=a;m.ret+=p;m.people+=live(e);c.net+=a-p;c.people+=live(e);
     if(e.type==='mesa')m.mesas++;
     m.days[e.date]=(m.days[e.date]||0)+a-p;
   });
@@ -349,7 +370,7 @@ function renderDash(){
   if(!S.clubs.length){
     out.innerHTML='<div class="card empty"><b>No venues yet</b>Add your first one in the Venues tab to start logging guests.</div>';return;
   }
-  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'&&DV.status!=='rej'&&DV.status!=='ns'),lab=nightsRange().label;
+  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'&&DV.status!=='rej'&&DV.status!=='ns'&&DV.status!=='stolen'),lab=nightsRange().label;
   var h='';
   if(!list.length){
     h+='<div class="card empty"><b>Nothing to show</b>No guests match these filters. Try another period or add people in the Lists tab.</div>';
@@ -363,12 +384,14 @@ function renderDash(){
      +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> if pending guests get in</span>':'')+'</div></div>';
     h+='<div class="tiles">'
      +'<div class="tile"><div class="v num">'+t.heads+'</div><div class="l">Logged</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
-     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Got in</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0)-(t.ns||0))+' pending'+(t.rej?' · '+t.rej+' rejected':'')+(t.ns?' · '+t.ns+' not show':'')+'</div></div>'
+     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Got in</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0)-(t.ns||0))+' pending'+(t.rej?' · '+t.rej+' rejected':'')+(t.ns?' · '+t.ns+' not show':'')+(t.stolen?' · '+t.stolen+' stolen':'')+'</div></div>'
      +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entry rate</div><div class="d">of those logged</div></div></div>';
   }
   var tp=topLists(),wr=DV.rank==='worst';
-  h+='<div class="chips" role="group" aria-label="Ranking"><button class="chip" type="button" data-rank="best" aria-pressed="'+(!wr)+'">🏆 Best</button><button class="chip" type="button" data-rank="worst" aria-pressed="'+wr+'">❌ Not show / Rejected</button></div>';
-  if(wr){
+  h+='<div class="chips" role="group" aria-label="Ranking"><button class="chip" type="button" data-rank="best" aria-pressed="'+(!wr)+'">🏆 Best</button><button class="chip" type="button" data-rank="worst" aria-pressed="'+wr+'">❌ Not show / Rejected</button><button class="chip" type="button" data-rank="stolen" aria-pressed="'+(DV.rank==='stolen')+'">🕵️ Stolen</button></div>';
+  if(DV.rank==='stolen'){
+    h+=topCard('🕵️ Top 10 promoters taking your guests','Who took the most of your guests · '+esc(lab),tp.stolen,'s');
+  }else if(wr){
     h+=topCard('❌ Top 10 Not show / Rejected guests','Most times rejected at the door or not showing up · '+esc(lab),tp.badGuests,'bg');
     h+=topCard('❌ Top 10 Not show / Rejected clients','Tables rejected or not showing up · '+esc(lab),tp.badClients,'bc');
   }else{
@@ -529,12 +552,20 @@ function renderLists(){
     return;
   }
   var list=dayEntries(),c=club(LV.club);
-  var tot=0,inn=0,mesas=0,mesasIn=0,rej=0,ns=0;
-  list.forEach(function(e){if(e.type==='mesa'){mesas++;if(e.entered)mesasIn++;return}tot+=heads(e);if(e.rejected)rej+=heads(e);if(statusOf(e)==='ns')ns+=heads(e);if(e.entered)inn+=heads(e)});
+  var tot=0,inn=0,mesas=0,mesasIn=0,rej=0,ns=0,stl=0,nt=0;
+  list.forEach(function(e){
+    var h=heads(e),ln=lossN(e),lt=lossT(e),L=h-ln;
+    if(lt==='stolen')stl+=ln;if(lt==='notally')nt+=ln;if(lt==='noshow')ns+=ln;
+    if(e.type==='mesa'){if(lt!=='stolen'&&lt!=='notally'){mesas++;if(e.entered&&L>0)mesasIn++}return}
+    tot+=h-(lt==='stolen'||lt==='notally'?ln:0);
+    if(L>0){if(e.rejected)rej+=L;else if(!e.entered&&e.date<nightDate())ns+=L;if(e.entered)inn+=L}
+  });
   var s='<span><b class="num">'+inn+'</b> of '+tot+' in</span>';
   if(mesas)s+='<span>⭐ <b class="num">'+mesasIn+'/'+mesas+'</b> '+(mesas===1?'table':'tables')+'</span>';
   if(rej)s+='<span>🚫 <b class="num">'+rej+'</b> rejected</span>';
   if(ns)s+='<span style="color:var(--s2)"><b class="num">'+ns+'</b> not show</span>';
+  if(stl)s+='<span style="color:var(--s2)"><b class="num">'+stl+'</b> stolen</span>';
+  if(nt)s+='<span style="color:var(--s2)"><b class="num">'+nt+'</b> not tally</span>';
   if(c&&c.bonusEvery>0&&c.bonusAmount>0){
     var got=Math.floor(inn/c.bonusEvery)*c.bonusAmount,left=c.bonusEvery-(inn%c.bonusEvery);
     s+='<span>Bonus <b class="num">'+esc(eur(got))+'</b> · '+left+' more for the next one</span>';
@@ -547,13 +578,13 @@ function renderLists(){
   var h='<div class="card" style="padding:4px 14px"><ul class="list">';
   list.forEach(function(e){
     var pr=profileOf(e.name),d=pr&&pr.desc;
-    h+='<li class="person'+(e.entered?' in':'')+(e.rejected?' rej':'')+(statusOf(e)==='ns'?' ns':'')+'">'
+    h+='<li class="person'+(e.entered?' in':'')+(e.rejected?' rej':'')+(/^(ns|stolen|notally)$/.test(statusOf(e))?' ns':'')+'">'
       +'<button class="row-main" type="button" data-act="toggle" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.entered)+'" aria-label="'+esc(e.name)+': '+(e.entered?'got in':'pending')+'">'
       +'<span class="ring">'+ICON_CHECK+'</span>'
       +'<span><span class="nm">'+(e.type==='mesa'?'<span aria-label="table">⭐</span>':'')+'<span>'+esc(e.name)+'</span>'+pillsFor(e)
       +(hasNum(e.extra)&&+e.extra>0?'<span class="tag" style="color:var(--s3)">'+(e.type==='mesa'?'Cover ':'Host ')+esc(eur(+e.extra))+'</span>':'')
       +(e.rejected?'<span class="tag" style="color:var(--crit)">Rejected</span>':'')
-      +(statusOf(e)==='ns'?'<span class="tag" style="color:var(--s2)">Not show</span>':'')
+      +lossTag(e)
       +(e.type==='pago'?'<span class="tag" style="color:var(--s2)">Referral'+(e.promoter?' · '+esc(e.promoter):'')+'</span>':'')+'</span>'
       +(d?'<span class="desc" style="display:block;white-space:pre-line">'+linkify(d)+'</span>':'')
       +'</span></button>'
@@ -581,6 +612,7 @@ function editPanel(e){
     +'</div>'
     +'<label class="f" for="e-desc">Notes / Instagram / plus-ones<textarea class="in" id="e-desc" rows="3">'+esc(pr.desc||'')+'</textarea></label>'
     +'<label class="f" for="e-extra">'+(e.type==='mesa'?'Cover (£)':'Host fee (£)')+'<input class="in num" id="e-extra" type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" autocomplete="off" value="'+esc(hasNum(e.extra)?e.extra:'')+'"></label>';
+  h+=lossHtml(e);
   if(e.type==='pago'){
     h+='<label class="f" for="e-prom">Referring promoter<input class="in" id="e-prom" list="promoters" type="text" value="'+esc(e.promoter||'')+'"></label>'
       +'<label class="f" for="e-payout">Pay-out to them (£, empty = what the venue pays)<input class="in num" id="e-payout" type="number" inputmode="decimal" min="0" step="0.5" value="'+esc(hasNum(e.payout)?e.payout:'')+'"></label>'
@@ -601,11 +633,18 @@ function saveEdit(id){
   var e=findEntry(id);if(!e)return;
   var name=$('#e-name').value.trim();
   if(!name){toast('Enter a name.');return}
+  var lt=$('#e-loss')?$('#e-loss').value:'',lp=$('#e-lossprom')?$('#e-lossprom').value.trim():'';
+  if(lt==='stolen'&&!lp){toast('Enter the promoter who took the guest.');return}
   var c=readCounts('#e-f','#e-m'),oldKey=pkey(e.name),keep=!hasSplit(e)&&e.n>1&&c.f+c.m===0;
   e.name=name;e.clubId=$('#e-club').value;e.type=$('#e-type').value;
   if(!keep){e.m=c.m;e.f=c.f;e.n=Math.max(1,c.m+c.f)}
   var sp=$('#e-spend')?$('#e-spend').value:'';e.amount=null;if($('#e-spend'))e.spend=sp===''?null:+sp;
   var ex=$('#e-extra').value;if(ex===''||!(+ex>0))delete e.extra;else e.extra=+ex;
+  if(lt){
+    var hh=heads(e),ls=$('#e-lossn')?$('#e-lossn').value:'all',lall=(ls==='all'||hh<=1||e.type==='mesa');
+    e.loss={t:lt,all:lall,n:lall?hh:+ls,prom:lt==='stolen'?lp:''};
+    if(lall){e.entered=false;e.rejected=false}
+  }else delete e.loss;
   if(e.type==='pago'){
     e.promoter=($('#e-prom')?$('#e-prom').value.trim():e.promoter)||'';
     var po=$('#e-payout')?$('#e-payout').value:'';e.payout=po===''?null:+po;
@@ -709,8 +748,8 @@ function bindLists(){
   $('#listOut').addEventListener('click',function(ev){
     var b=ev.target.closest('[data-act]');if(!b)return;
     var a=b.dataset.act,id=b.dataset.id,e=id?findEntry(id):null;
-    if(a==='toggle'&&e){e.entered=!e.entered;if(e.entered)e.rejected=false;save();renderLists()}
-    else if(a==='reject'&&e){e.rejected=!e.rejected;if(e.rejected)e.entered=false;save();renderLists()}
+    if(a==='toggle'&&e){if(lostAll(e)){delete e.loss;e.entered=true;e.rejected=false}else{e.entered=!e.entered;if(e.entered)e.rejected=false}save();renderLists()}
+    else if(a==='reject'&&e){if(lostAll(e)){delete e.loss;e.rejected=true;e.entered=false}else{e.rejected=!e.rejected;if(e.rejected)e.entered=false}save();renderLists()}
     else if(a==='edit'&&e){LV.edit=LV.edit===id?null:id;LV.confirmDel=null;renderLists()}
     else if(a==='cancel'){LV.edit=null;LV.confirmDel=null;renderLists()}
     else if(a==='save')saveEdit(id);
@@ -728,6 +767,31 @@ function bindLists(){
 document.addEventListener('input',function(ev){
   var t=ev.target;
   if(t&&t.id==='e-extra'){var v=t.value.replace(/,/g,'.').replace(/[^0-9.]/g,'');var i=v.indexOf('.');if(i>=0)v=v.slice(0,i+1)+v.slice(i+1).replace(/\./g,'');if(v!==t.value)t.value=v}
+});
+
+/* lost guests: tag + edit-form block */
+function lossTag(e){
+  var t=lossT(e),n=lossN(e),h=heads(e);
+  if(!t||!n)return statusOf(e)==='ns'?'<span class="tag" style="color:var(--s2)">Not show</span>':'';
+  var nm={noshow:'Not show',stolen:'Stolen',notally:'Not tally'}[t];
+  return '<span class="tag" style="color:var(--s2)">'+nm+(h>1?' ×'+n:'')+(t==='stolen'&&e.loss.prom?' · '+esc(e.loss.prom):'')+'</span>';
+}
+function lossHtml(e){
+  var L=e.loss||{},t=L.t||'',hh=heads(e),multi=hh>1&&e.type!=='mesa',n=lossN(e),all=!t||lostAll(e),opts='<option value="all"'+(all?' selected':'')+'>All ('+hh+')</option>',th=[];
+  for(var i=1;i<hh;i++)opts+='<option value="'+i+'"'+(!all&&n===i?' selected':'')+'>'+i+' of '+hh+'</option>';
+  S.entries.forEach(function(x){if(x.loss&&x.loss.t==='stolen'&&x.loss.prom&&th.indexOf(x.loss.prom)<0)th.push(x.loss.prom)});
+  return '<label class="f" for="e-loss">Lost guest?<select class="in" id="e-loss"><option value="">No</option>'
+    +'<option value="stolen"'+(t==='stolen'?' selected':'')+'>Stolen (another promoter took them)</option>'
+    +'<option value="notally"'+(t==='notally'?' selected':'')+'>Not tally (venue didn’t log them)</option>'
+    +'<option value="noshow"'+(t==='noshow'?' selected':'')+'>Not show (they didn’t come)</option></select></label>'
+    +'<div id="e-lossmore"'+(t?'':' style="display:none"')+'>'
+    +(multi?'<label class="f" for="e-lossn">How many people<select class="in" id="e-lossn">'+opts+'</select></label>':'')
+    +'<label class="f" id="e-lossprom-w" for="e-lossprom"'+(t==='stolen'?'':' style="display:none"')+'>Promoter who took them<input class="in" id="e-lossprom" list="thieves" type="text" autocomplete="off" value="'+esc(L.prom||'')+'"></label>'
+    +'<datalist id="thieves">'+th.sort().map(function(x){return '<option value="'+esc(x)+'">'}).join('')+'</datalist></div>';
+}
+document.addEventListener('change',function(ev){
+  var t=ev.target;
+  if(t&&t.id==='e-loss'){var v=t.value;$('#e-lossmore').style.display=v?'':'none';$('#e-lossprom-w').style.display=v==='stolen'?'':'none'}
 });
 
 /* =========================== FACTURAS (INVOICES) =========================== */
@@ -764,7 +828,7 @@ function invData(c,a,b){
     var d=day(e.date),x=amt(e);
     if(isHostEntry(e)){d.ho.n++;d.ho.a+=x}
     else if(e.type==='mesa'){var cv=hasNum(e.extra)?+e.extra:0;d.me.n++;d.me.sp+=hasNum(e.spend)?+e.spend:0;d.me.a+=x-cv;d.cv+=cv}
-    else{d.li.n+=heads(e);d.li.a+=x}
+    else{d.li.n+=live(e);d.li.a+=x}
   });
   Object.keys(BM).forEach(function(k){var p=k.split('|');if(p[0]===c.id&&p[1]>=a&&p[1]<=b)day(p[1]).bo=BM[k]});
   Object.keys(days).sort().forEach(function(date){
