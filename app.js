@@ -205,9 +205,8 @@ function dFiltered(){
     if(e.date<r.a||e.date>r.b)return false;
     if(DV.club!=='all'&&e.clubId!==DV.club)return false;
     if(DV.type!=='all'&&e.type!==DV.type)return false;
-    if(lossT(e)==='notally'&&lostAll(e))return false;
+    if(DV.status==='notally'){if(lossT(e)!=='notally')return false}else if(lossT(e)==='notally'&&lostAll(e))return false;
     if(DV.status==='in'&&(!e.entered||lostAll(e)))return false;
-    if(DV.status==='out'&&statusOf(e)!=='pend')return false;
     if(DV.status==='ns'&&statusOf(e)!=='ns'&&lossT(e)!=='noshow')return false;
     if(DV.status==='stolen'&&lossT(e)!=='stolen')return false;
     if(DV.status==='rej'&&!e.rejected)return false;
@@ -224,6 +223,7 @@ function totals(list,useBonus){
     c.heads+=hr;
     t.days[e.date]=t.days[e.date]||0;
     if(lt==='stolen')t.stolen=(t.stolen||0)+ln;
+    if(lt==='notally')t.nt=(t.nt||0)+ln;
     if(lt==='noshow')t.ns=(t.ns||0)+ln;
     if(L>0){
       if(e.entered){
@@ -370,7 +370,7 @@ function renderDash(){
   if(!S.clubs.length){
     out.innerHTML='<div class="card empty"><b>No venues yet</b>Add your first one in the Venues tab to start logging guests.</div>';return;
   }
-  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='out'&&DV.status!=='rej'&&DV.status!=='ns'&&DV.status!=='stolen'),lab=nightsRange().label;
+  var list=dFiltered(),t=totals(list,DV.type==='all'&&DV.status!=='rej'&&DV.status!=='ns'&&DV.status!=='stolen'&&DV.status!=='notally'),lab=nightsRange().label;
   var h='';
   if(!list.length){
     h+='<div class="card empty"><b>Nothing to show</b>No guests match these filters. Try another period or add people in the Lists tab.</div>';
@@ -383,7 +383,7 @@ function renderDash(){
      +(t.mesas>0?'<span>⭐ <b class="num">'+plural(t.mesas,'table','tables')+'</b></span>':'')
      +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> if pending guests get in</span>':'')+'</div></div>';
     h+='<div class="tiles">'
-     +'<div class="tile"><div class="v num">'+t.heads+'</div><div class="l">Logged</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
+     +'<div class="tile"><div class="v num">'+(DV.status==='notally'?(t.nt||0):t.heads)+'</div><div class="l">Logged</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
      +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Got in</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0)-(t.ns||0))+' pending'+(t.rej?' · '+t.rej+' rejected':'')+(t.ns?' · '+t.ns+' not show':'')+(t.stolen?' · '+t.stolen+' stolen':'')+'</div></div>'
      +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entry rate</div><div class="d">of those logged</div></div></div>';
   }
