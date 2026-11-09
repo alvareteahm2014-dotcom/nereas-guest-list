@@ -185,7 +185,7 @@ function toast(msg,undo){
 
 /* ---------- estado de vistas ---------- */
 var LV={date:nightDate(),club:'',type:'lista',confirmDel:null,edit:null};
-var DV={period:'sem',off:0,club:'all',type:'all',status:'all',from:'',to:'',openMonth:null,moreMonths:false};
+var DV={period:'sem',off:0,club:'all',type:'all',status:'all',from:'',to:'',openMonth:null,openBad:'',moreMonths:false};
 var ICON_CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
 /* =========================== DASHBOARD =========================== */
@@ -258,10 +258,11 @@ function topLists(){
     if(st==='stolen'||st==='notally')return;
     if(st==='pend'&&!(lt==='noshow'&&ln>0))return;
     var k=pkey(e.name),M=e.type==='mesa'?C:G;
-    var x=M[k]||(M[k]={name:e.name,people:0,visits:0,spend:0,fee:0,last:'',rej:0,ns:0});
+    var x=M[k]||(M[k]={name:e.name,people:0,visits:0,spend:0,fee:0,last:'',rej:0,ns:0,ev:[]});
     if(st==='in'){x.people+=live(e);x.visits++;x.fee+=amt(e);if(hasNum(e.spend))x.spend+=+e.spend}
-    else if(st==='rej')x.rej++;else if(st==='ns'&&lt!=='noshow')x.ns++;
-    if(lt==='noshow'&&ln>0)x.ns+=ln;
+    else if(st==='rej'){x.rej++;x.ev.push({d:e.date,c:e.clubId,k:'Rejected',n:heads(e)})}
+    else if(st==='ns'&&lt!=='noshow'){x.ns++;x.ev.push({d:e.date,c:e.clubId,k:'Not show',n:heads(e)})}
+    if(lt==='noshow'&&ln>0){x.ns+=ln;x.ev.push({d:e.date,c:e.clubId,k:'Not show',n:ln})}
     if(e.date>x.last){x.last=e.date;x.name=e.name}
   });
   function arr(M,f,w){return Object.keys(M).map(function(k){return M[k]}).filter(function(x){return w?x.rej+x.ns>0:x.visits>0}).sort(f).slice(0,10)}
@@ -281,7 +282,12 @@ function topCard(title,sub,rows,kind){
     var line=kind==='s'?plural(x.times,'entry','entries')+' · last '+fmtShort(x.last):kind==='bg'||kind==='bc'?(x.rej?plural(x.rej,'rejection','rejections'):'')+(x.rej&&x.ns?' · ':'')+(x.ns?x.ns+' not show':'')+(x.visits?' · '+plural(x.visits,'entry','entries'):''):kind==='g'?plural(x.visits,'visit','visits')+(x.visits>1?' · repeat':'')
       :plural(x.visits,'table','tables')+' · '+plural(x.people,'person','people')+(x.spend>0?' · spend '+eur(x.spend):'');
     var val=kind==='s'?'<b class="num">'+x.people+'</b><span>'+(x.people===1?'guest':'guests')+'</span>':kind==='bg'||kind==='bc'?'<b class="num">'+(x.rej+x.ns)+'</b><span>times</span>':kind==='g'?'<b class="num">'+x.people+'</b><span>people</span>':'<b class="num">'+x.visits+'</b><span>'+(x.visits===1?'table':'tables')+'</span>';
-    h+='<li><span class="rk num">'+(kind==='g'&&i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="tn">'+(kind==='c'||kind==='bc'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
+    var bad=(kind==='bg'||kind==='bc')&&x.ev&&x.ev.length,bid=kind+'|'+i,open=bad&&DV.openBad===bid;
+    h+='<li'+(bad?' class="badrow" role="button" tabindex="0" data-bad="'+bid+'" aria-expanded="'+(!!open)+'"':'')+'><span class="rk num">'+(kind==='g'&&i<3?['🥇','🥈','🥉'][i]:i+1)+'</span><span class="tn">'+(kind==='c'||kind==='bc'?'⭐ ':'')+esc(x.name)+'<small>'+esc(line)+'</small></span><span class="tv">'+val+'</span></li>';
+    if(open){
+      h+='<li class="baddet"><ul>'+x.ev.slice().sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:0}).map(function(v){
+        var c=club(v.c);return '<li><b>'+esc(v.k)+(v.n>1?' ×'+v.n:'')+'</b> · '+esc(fmtLong(v.d))+' · '+esc(c?c.name:'Unknown venue')+'</li>'}).join('')+'</ul></li>';
+    }
   });
   return h+'</ol></div>';
 }
@@ -469,13 +475,20 @@ function bindDash(){
   $('#d-from').onchange=function(){DV.from=this.value;renderDashFilters();renderDash()};
   $('#d-to').onchange=function(){DV.to=this.value;renderDashFilters();renderDash()};
   $('#dashOut').addEventListener('click',function(ev){
-    var rk=ev.target.closest('[data-rank]');if(rk){DV.rank=rk.dataset.rank;renderDash();return}
+    var rk=ev.target.closest('[data-rank]');if(rk){DV.rank=rk.dataset.rank;DV.openBad='';renderDash();return}
+    var bd=ev.target.closest('[data-bad]');if(bd){DV.openBad=DV.openBad===bd.dataset.bad?'':bd.dataset.bad;renderDash();return}
     var p=ev.target.closest('[data-act="paid"]');if(p){markPaid(p.dataset.prom);return}
     var more=ev.target.closest('[data-more]');
     if(more){DV.moreMonths=!DV.moreMonths;renderDash();return}
     var b=ev.target.closest('.mrow');if(!b)return;
     DV.openMonth=DV.openMonth===b.dataset.m?'':b.dataset.m;
     renderDash();
+  });
+  $('#dashOut').addEventListener('keydown',function(ev){
+    if(ev.key!=='Enter'&&ev.key!==' ')return;
+    var bd=ev.target.closest&&ev.target.closest('[data-bad]');if(!bd)return;
+    ev.preventDefault();DV.openBad=DV.openBad===bd.dataset.bad?'':bd.dataset.bad;renderDash();
+    var again=document.querySelector('[data-bad="'+bd.dataset.bad+'"]');if(again)again.focus();
   });
   window.addEventListener('resize',function(){var el=$('#colChart');if(el&&!$('#view-dash').hidden)renderDash()});
 }
