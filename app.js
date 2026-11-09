@@ -114,7 +114,7 @@ function upsertProfile(name,patch){
 /* bonus: cada X personas que entran en una discoteca el mismo día */
 function bonusMap(){
   var cnt={},out={};
-  S.entries.forEach(function(e){if(!e.entered)return;var k=e.clubId+'|'+e.date;cnt[k]=(cnt[k]||0)+heads(e)});
+  S.entries.forEach(function(e){if(!e.entered||e.type==='mesa')return;var k=e.clubId+'|'+e.date;cnt[k]=(cnt[k]||0)+heads(e)});
   Object.keys(cnt).forEach(function(k){
     var c=club(k.split('|')[0]);
     if(c&&c.bonusEvery>0&&c.bonusAmount>0){var x=Math.floor(cnt[k]/c.bonusEvery)*c.bonusAmount;if(x>0)out[k]=x}
@@ -529,10 +529,10 @@ function renderLists(){
     return;
   }
   var list=dayEntries(),c=club(LV.club);
-  var tot=0,inn=0,mesas=0,rej=0,ns=0;
-  list.forEach(function(e){tot+=heads(e);if(e.rejected)rej+=heads(e);if(statusOf(e)==='ns')ns+=heads(e);if(e.entered){inn+=heads(e);if(e.type==='mesa')mesas++}});
+  var tot=0,inn=0,mesas=0,mesasIn=0,rej=0,ns=0;
+  list.forEach(function(e){if(e.type==='mesa'){mesas++;if(e.entered)mesasIn++;return}tot+=heads(e);if(e.rejected)rej+=heads(e);if(statusOf(e)==='ns')ns+=heads(e);if(e.entered)inn+=heads(e)});
   var s='<span><b class="num">'+inn+'</b> of '+tot+' in</span>';
-  if(mesas)s+='<span>⭐ <b class="num">'+mesas+'</b></span>';
+  if(mesas)s+='<span>⭐ <b class="num">'+mesasIn+'/'+mesas+'</b> '+(mesas===1?'table':'tables')+'</span>';
   if(rej)s+='<span>🚫 <b class="num">'+rej+'</b> rejected</span>';
   if(ns)s+='<span style="color:var(--s2)"><b class="num">'+ns+'</b> not show</span>';
   if(c&&c.bonusEvery>0&&c.bonusAmount>0){
@@ -551,7 +551,7 @@ function renderLists(){
       +'<button class="row-main" type="button" data-act="toggle" data-id="'+esc(e.id)+'" aria-pressed="'+(!!e.entered)+'" aria-label="'+esc(e.name)+': '+(e.entered?'got in':'pending')+'">'
       +'<span class="ring">'+ICON_CHECK+'</span>'
       +'<span><span class="nm">'+(e.type==='mesa'?'<span aria-label="table">⭐</span>':'')+'<span>'+esc(e.name)+'</span>'+pillsFor(e)
-      +(hasNum(e.extra)&&+e.extra>0?'<span class="tag" style="color:var(--s3)">Host '+esc(eur(+e.extra))+'</span>':'')
+      +(hasNum(e.extra)&&+e.extra>0?'<span class="tag" style="color:var(--s3)">'+(e.type==='mesa'?'Cover ':'Host ')+esc(eur(+e.extra))+'</span>':'')
       +(e.rejected?'<span class="tag" style="color:var(--crit)">Rejected</span>':'')
       +(statusOf(e)==='ns'?'<span class="tag" style="color:var(--s2)">Not show</span>':'')
       +(e.type==='pago'?'<span class="tag" style="color:var(--s2)">Referral'+(e.promoter?' · '+esc(e.promoter):'')+'</span>':'')+'</span>'
@@ -580,7 +580,7 @@ function editPanel(e){
     +'<label class="f" for="e-type">Type<select class="in" id="e-type"><option value="lista"'+(e.type==='lista'?' selected':'')+'>List</option><option value="mesa"'+(e.type==='mesa'?' selected':'')+'>⭐ Table</option><option value="pago"'+(e.type==='pago'?' selected':'')+'>Referral</option></select></label>'
     +'</div>'
     +'<label class="f" for="e-desc">Notes / Instagram / plus-ones<textarea class="in" id="e-desc" rows="3">'+esc(pr.desc||'')+'</textarea></label>'
-    +'<label class="f" for="e-extra">Host fee (£)<input class="in num" id="e-extra" type="number" inputmode="decimal" min="0" step="10" value="'+esc(hasNum(e.extra)?e.extra:'')+'"></label>';
+    +'<label class="f" for="e-extra">'+(e.type==='mesa'?'Cover (£)':'Host fee (£)')+'<input class="in num" id="e-extra" type="text" inputmode="decimal" pattern="[0-9]*[.]?[0-9]*" autocomplete="off" value="'+esc(hasNum(e.extra)?e.extra:'')+'"></label>';
   if(e.type==='pago'){
     h+='<label class="f" for="e-prom">Referring promoter<input class="in" id="e-prom" list="promoters" type="text" value="'+esc(e.promoter||'')+'"></label>'
       +'<label class="f" for="e-payout">Pay-out to them (£, empty = what the venue pays)<input class="in num" id="e-payout" type="number" inputmode="decimal" min="0" step="0.5" value="'+esc(hasNum(e.payout)?e.payout:'')+'"></label>'
@@ -605,7 +605,7 @@ function saveEdit(id){
   e.name=name;e.clubId=$('#e-club').value;e.type=$('#e-type').value;
   if(!keep){e.m=c.m;e.f=c.f;e.n=Math.max(1,c.m+c.f)}
   var sp=$('#e-spend')?$('#e-spend').value:'';e.amount=null;if($('#e-spend'))e.spend=sp===''?null:+sp;
-  var ex=$('#e-extra').value;if(ex===''||+ex<=0)delete e.extra;else e.extra=+ex;
+  var ex=$('#e-extra').value;if(ex===''||!(+ex>0))delete e.extra;else e.extra=+ex;
   if(e.type==='pago'){
     e.promoter=($('#e-prom')?$('#e-prom').value.trim():e.promoter)||'';
     var po=$('#e-payout')?$('#e-payout').value:'';e.payout=po===''?null:+po;
@@ -724,6 +724,12 @@ function bindLists(){
   });
 }
 
+/* numbers only in the Cover / Host fee field */
+document.addEventListener('input',function(ev){
+  var t=ev.target;
+  if(t&&t.id==='e-extra'){var v=t.value.replace(/,/g,'.').replace(/[^0-9.]/g,'');var i=v.indexOf('.');if(i>=0)v=v.slice(0,i+1)+v.slice(i+1).replace(/\./g,'');if(v!==t.value)t.value=v}
+});
+
 /* =========================== FACTURAS (INVOICES) =========================== */
 function me(){return S.me||(S.me={})}
 function isHostEntry(e){return hasNum(e.extra)&&+e.extra>0&&String(e.name).trim().toLowerCase()==='host'}
@@ -752,12 +758,12 @@ var INV_CSS='.invdoc{background:#fff;color:#111;max-width:760px;margin:12px auto
 /* líneas de factura de una discoteca entre dos noches (solo lo que ha entrado) */
 function invData(c,a,b){
   var days={},BM=bonusMap(),rows=[],sub=0;
-  function day(d){return days[d]||(days[d]={li:{n:0,a:0},me:{n:0,sp:0,a:0},ho:{n:0,a:0},bo:0})}
+  function day(d){return days[d]||(days[d]={li:{n:0,a:0},me:{n:0,sp:0,a:0},ho:{n:0,a:0},cv:0,bo:0})}
   S.entries.forEach(function(e){
     if(e.clubId!==c.id||!e.entered||e.rejected||e.date<a||e.date>b)return;
     var d=day(e.date),x=amt(e);
     if(isHostEntry(e)){d.ho.n++;d.ho.a+=x}
-    else if(e.type==='mesa'){d.me.n++;d.me.sp+=hasNum(e.spend)?+e.spend:0;d.me.a+=x}
+    else if(e.type==='mesa'){var cv=hasNum(e.extra)?+e.extra:0;d.me.n++;d.me.sp+=hasNum(e.spend)?+e.spend:0;d.me.a+=x-cv;d.cv+=cv}
     else{d.li.n+=heads(e);d.li.a+=x}
   });
   Object.keys(BM).forEach(function(k){var p=k.split('|');if(p[0]===c.id&&p[1]>=a&&p[1]<=b)day(p[1]).bo=BM[k]});
@@ -765,6 +771,7 @@ function invData(c,a,b){
     var d=days[date];
     if(d.li.n&&d.li.a>0)rows.push({date:date,desc:'Guest list · '+d.li.n+(d.li.n===1?' guest':' guests')+' entered',qty:d.li.n,unit:d.li.a/d.li.n,amount:d.li.a});
     if(d.me.n&&d.me.a>0)rows.push({date:date,desc:'Table commission · '+d.me.n+(d.me.n===1?' table':' tables')+(d.me.sp>0?' · spend '+eur(d.me.sp):'')+(+c.pctMesa>0?' @ '+c.pctMesa+'%':''),qty:1,unit:d.me.a,amount:d.me.a});
+    if(d.cv>0)rows.push({date:date,desc:'Table cover',qty:1,unit:d.cv,amount:d.cv});
     if(d.ho.n&&d.ho.a>0)rows.push({date:date,desc:'Host fee'+(d.ho.n>1?' × '+d.ho.n:''),qty:d.ho.n,unit:d.ho.a/d.ho.n,amount:d.ho.a});
     if(d.bo>0)rows.push({date:date,desc:'Attendance bonus'+(+c.bonusEvery>0?' (every '+c.bonusEvery+' guests)':''),qty:1,unit:d.bo,amount:d.bo});
   });
