@@ -205,7 +205,7 @@ function dFiltered(){
     if(e.date<r.a||e.date>r.b)return false;
     if(DV.club!=='all'&&e.clubId!==DV.club)return false;
     if(DV.type!=='all'&&e.type!==DV.type)return false;
-    if(DV.status==='notally'){if(lossT(e)!=='notally')return false}else if(lossT(e)==='notally'&&lostAll(e))return false;
+    if(DV.status==='notally'&&lossT(e)!=='notally')return false;
     if(DV.status==='in'&&(!e.entered||lostAll(e)))return false;
     if(DV.status==='ns'&&statusOf(e)!=='ns'&&lossT(e)!=='noshow')return false;
     if(DV.status==='stolen'&&lossT(e)!=='stolen')return false;
@@ -217,7 +217,7 @@ function totals(list,useBonus){
   var BM=useBonus?bonusMap():{},seen={};
   var t={heads:0,inHeads:0,gen:0,ret:0,retPend:0,prevGen:0,prevRet:0,bonus:0,mesas:0,clubs:{},prom:{},days:{},n:list.length};
   list.forEach(function(e){
-    var h=heads(e),a=amt(e),p=pay(e),lt=lossT(e),ln=lossN(e),L=h-ln,hr=h-(lt==='notally'||lt==='stolen'?ln:0);
+    var h=heads(e),a=amt(e),p=pay(e),lt=lossT(e),ln=lossN(e),L=h-ln,hr=h-(lt==='stolen'?ln:0);
     t.heads+=hr;
     var c=t.clubs[e.clubId]||(t.clubs[e.clubId]={gen:0,ret:0,heads:0,inH:0,bonus:0});
     c.heads+=hr;
@@ -813,7 +813,7 @@ function lossHtml(e){
   S.entries.forEach(function(x){if(x.loss&&x.loss.t==='stolen'&&x.loss.prom&&th.indexOf(x.loss.prom)<0)th.push(x.loss.prom)});
   return '<label class="f" for="e-loss">Lost guest?<select class="in" id="e-loss"><option value="">No</option>'
     +'<option value="stolen"'+(t==='stolen'?' selected':'')+'>Stolen (another promoter took them)</option>'
-    +'<option value="notally"'+(t==='notally'?' selected':'')+'>Not tally (venue didn’t log them)</option>'
+    +'<option value="notally"'+(t==='notally'?' selected':'')+'>Not tally (Venue didn’t tally them)</option>'
     +'<option value="noshow"'+(t==='noshow'?' selected':'')+'>Not show (they didn’t come)</option></select></label>'
     +'<div id="e-lossmore"'+(t?'':' style="display:none"')+'>'
     +(multi?'<label class="f" for="e-lossn">How many people<select class="in" id="e-lossn">'+opts+'</select></label>':'')
