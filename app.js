@@ -376,7 +376,7 @@ function renderDash(){
     h+='<div class="card empty"><b>Nothing to show</b>No guests match these filters. Try another period or add people in the Lists tab.</div>';
   }else if(DV.status==='ns'||DV.status==='stolen'||DV.status==='notally'){
     var lc=DV.status==='ns'?t.ns:DV.status==='stolen'?t.stolen:t.nt;
-    h+='<div class="tiles" style="grid-template-columns:1fr"><div class="tile"><div class="v num">'+(lc||0)+'</div><div class="l">Logged</div><div class="d">'+plural(t.n,'entry','entries')+'</div></div></div>';
+    h+='<div class="tiles" style="grid-template-columns:1fr"><div class="tile" style="text-align:center"><div class="v num">'+(lc||0)+'</div><div class="l">'+(DV.status==='ns'?'Not show':DV.status==='stolen'?'Stolen':'Not tally')+'</div></div></div>';
   }else{
     var neto=t.gen-t.ret,prevNeto=t.prevGen-t.prevRet,rate100=t.heads?Math.round(t.inHeads/t.heads*100):0;
     h+='<div class="card hero"><span class="lbl">Net balance · '+esc(lab)+'</span><span class="big num">'+esc(eur(neto))+'</span>'
