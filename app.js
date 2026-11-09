@@ -386,8 +386,8 @@ function renderDash(){
      +(t.mesas>0?'<span>⭐ <b class="num">'+plural(t.mesas,'table','tables')+'</b></span>':'')
      +(prevNeto>0?'<span>+<b class="num">'+esc(eur(prevNeto))+'</b> if pending guests get in</span>':'')+'</div></div>';
     h+='<div class="tiles">'
-     +'<div class="tile"><div class="v num">'+(DV.status==='notally'?(t.nt||0):t.heads)+'</div><div class="l">Logged</div><div class="d">'+plural(t.n,'guest','guests')+'</div></div>'
-     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Got in</div><div class="d">'+(t.heads-t.inHeads-(t.rej||0)-(t.ns||0))+' pending'+(t.rej?' · '+t.rej+' rejected':'')+(t.ns?' · '+t.ns+' not show':'')+(t.stolen?' · '+t.stolen+' stolen':'')+'</div></div>'
+     +'<div class="tile"><div class="v num">'+(DV.status==='notally'?(t.nt||0):t.heads)+'</div><div class="l">Logged</div></div>'
+     +'<div class="tile"><div class="v num">'+t.inHeads+'</div><div class="l">Got in</div><div class="d">'+[t.rej?t.rej+' rejected':'',t.ns?t.ns+' not show':'',t.stolen?t.stolen+' stolen':''].filter(Boolean).join(' · ')+'</div></div>'
      +'<div class="tile"><div class="v num">'+rate100+'%</div><div class="l">Entry rate</div><div class="d">of those logged</div></div></div>';
   }
   var tp=topLists(),wr=DV.rank==='worst';
