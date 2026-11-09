@@ -688,7 +688,7 @@ function addEntry(extra){
 var CAL={open:false,month:''};
 function dayInfo(){
   var m={};
-  S.entries.forEach(function(e){var x=m[e.date]||(m[e.date]={n:0,mesa:false});x.n++;if(e.type==='mesa')x.mesa=true});
+  S.entries.forEach(function(e){if(e.clubId!==LV.club)return;var x=m[e.date]||(m[e.date]={n:0,mesa:false});x.n++;if(e.type==='mesa')x.mesa=true});
   return m;
 }
 function renderCal(){
