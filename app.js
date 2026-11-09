@@ -382,7 +382,13 @@ function renderDash(){
     h+='<div class="card empty"><b>Nothing to show</b>No guests match these filters. Try another period or add people in the Lists tab.</div>';
   }else if(DV.status==='ns'||DV.status==='stolen'||DV.status==='notally'){
     var lc=DV.status==='ns'?t.ns:DV.status==='stolen'?t.stolen:t.nt;
-    h+='<div class="tiles" style="grid-template-columns:1fr"><div class="tile" style="text-align:center"><div class="v num">'+(lc||0)+'</div><div class="l">'+(DV.status==='ns'?'Not show':DV.status==='stolen'?'Stolen':'Not tally')+'</div></div></div>';
+    var isNT=DV.status==='notally',openNT=isNT&&DV.openNT;
+    h+='<div class="tiles" style="grid-template-columns:1fr"><div class="tile" style="text-align:center'+(isNT?';cursor:pointer':'')+'"'+(isNT?' role="button" tabindex="0" data-nt="1" aria-expanded="'+(!!openNT)+'"':'')+'><div class="v num">'+(lc||0)+'</div><div class="l">'+(DV.status==='ns'?'Not show':DV.status==='stolen'?'Stolen':'Not tally')+(isNT?' ▾':'')+'</div></div></div>';
+    if(openNT){
+      h+='<div class="card"><ul style="list-style:none;margin:0;padding:0">'+list.filter(function(e){return lossT(e)==='notally'}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:0}).map(function(e){
+        var c=club(e.clubId),n=lossN(e);
+        return '<li style="padding:8px 0;border-top:1px solid var(--grid)"><b>'+esc(e.name)+'</b>'+(n>1?' ×'+n:'')+'<small style="display:block;color:var(--ink2)">'+esc(fmtLong(e.date))+' · '+esc(c?c.name:'Unknown venue')+'</small></li>'}).join('')+'</ul></div>';
+    }
   }else{
     var neto=t.gen-t.ret,prevNeto=t.prevGen-t.prevRet,rate100=t.heads?Math.round(t.inHeads/t.heads*100):0;
     h+='<div class="card hero"><span class="lbl">Net balance · '+esc(lab)+'</span><span class="big num">'+esc(eur(neto))+'</span>'
@@ -471,11 +477,12 @@ function bindDash(){
   $('#pNext').onclick=function(){DV.off++;renderDashFilters();renderDash()};
   $('#d-club').onchange=function(){DV.club=this.value;renderDash()};
   $('#d-type').onchange=function(){DV.type=this.value;renderDash()};
-  $('#d-status').onchange=function(){DV.status=this.value;renderDash()};
+  $('#d-status').onchange=function(){DV.status=this.value;DV.openNT=false;renderDash()};
   $('#d-from').onchange=function(){DV.from=this.value;renderDashFilters();renderDash()};
   $('#d-to').onchange=function(){DV.to=this.value;renderDashFilters();renderDash()};
   $('#dashOut').addEventListener('click',function(ev){
     var rk=ev.target.closest('[data-rank]');if(rk){DV.rank=rk.dataset.rank;DV.openBad='';renderDash();return}
+    if(ev.target.closest('[data-nt]')){DV.openNT=!DV.openNT;renderDash();return}
     var bd=ev.target.closest('[data-bad]');if(bd){DV.openBad=DV.openBad===bd.dataset.bad?'':bd.dataset.bad;renderDash();return}
     var p=ev.target.closest('[data-act="paid"]');if(p){markPaid(p.dataset.prom);return}
     var more=ev.target.closest('[data-more]');
@@ -486,6 +493,7 @@ function bindDash(){
   });
   $('#dashOut').addEventListener('keydown',function(ev){
     if(ev.key!=='Enter'&&ev.key!==' ')return;
+    var nt=ev.target.closest&&ev.target.closest('[data-nt]');if(nt){ev.preventDefault();DV.openNT=!DV.openNT;renderDash();var t2=document.querySelector('[data-nt]');if(t2)t2.focus();return}
     var bd=ev.target.closest&&ev.target.closest('[data-bad]');if(!bd)return;
     ev.preventDefault();DV.openBad=DV.openBad===bd.dataset.bad?'':bd.dataset.bad;renderDash();
     var again=document.querySelector('[data-bad="'+bd.dataset.bad+'"]');if(again)again.focus();
