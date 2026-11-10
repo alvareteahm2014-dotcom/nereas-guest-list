@@ -672,7 +672,8 @@ function saveEdit(id){
   if(!keep){e.m=c.m;e.f=c.f;e.n=Math.max(1,c.m+c.f)}
   var sp=$('#e-spend')?$('#e-spend').value:'';e.amount=null;if($('#e-spend'))e.spend=sp===''?null:+sp;
   var ex=$('#e-extra').value;if(ex===''||!(+ex>0))delete e.extra;else e.extra=+ex;
-  if(lt){
+  if(lt==='noshow'&&!lossT(e)&&statusOf(e)==='ns'&&($('#e-lossn')?$('#e-lossn').value==='all':true)){delete e.loss}
+  else if(lt){
     var hh=heads(e),ls=$('#e-lossn')?$('#e-lossn').value:'all',lall=(ls==='all'||hh<=1||e.type==='mesa');
     e.loss={t:lt,all:lall,n:lall?hh:+ls,prom:lt==='stolen'?lp:''};
     if(lall){e.entered=false;e.rejected=false}
@@ -809,7 +810,7 @@ function lossTag(e){
   return '<span class="tag" style="color:var(--s2)">'+nm+(h>1?' ×'+n:'')+(t==='stolen'&&e.loss.prom?' · '+esc(e.loss.prom):'')+'</span>';
 }
 function lossHtml(e){
-  var L=e.loss||{},t=L.t||'',hh=heads(e),multi=hh>1&&e.type!=='mesa',n=lossN(e),all=!t||lostAll(e),opts='<option value="all"'+(all?' selected':'')+'>All ('+hh+')</option>',th=[];
+  var L=e.loss||{},t0=L.t||'',t=t0||(statusOf(e)==='ns'?'noshow':''),hh=heads(e),multi=hh>1&&e.type!=='mesa',n=lossN(e),all=!t0||lostAll(e),opts='<option value="all"'+(all?' selected':'')+'>All ('+hh+')</option>',th=[];
   for(var i=1;i<hh;i++)opts+='<option value="'+i+'"'+(!all&&n===i?' selected':'')+'>'+i+' of '+hh+'</option>';
   S.entries.forEach(function(x){if(x.loss&&x.loss.t==='stolen'&&x.loss.prom&&th.indexOf(x.loss.prom)<0)th.push(x.loss.prom)});
   return '<label class="f" for="e-loss">Lost guest?<select class="in" id="e-loss"><option value="">No</option>'
