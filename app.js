@@ -472,7 +472,37 @@ function goList(v){
   LV.date=p[0];LV.club=p[1];LV.edit=null;LV.confirmDel=null;
   setTab('lists');window.scrollTo(0,0);
 }
+function renderSearch(){
+  var out=$('#gsearchOut'),inp=$('#gsearch');if(!out||!inp)return;
+  var raw=inp.value.trim(),q=norm(raw);
+  if(raw.length<2){out.innerHTML='';return}
+  var rows=[];
+  S.entries.forEach(function(e){
+    var pr=profileOf(e.name),desc=pr&&pr.desc?String(pr.desc):'',hit='';
+    if(norm(e.name).indexOf(q)<0){
+      var lines=desc.split('\n').concat(e.names||[]);
+      for(var i=0;i<lines.length;i++){if(norm(lines[i]).indexOf(q)>=0){hit=String(lines[i]).trim();break}}
+      if(!hit)return;
+    }
+    rows.push({e:e,hit:hit});
+  });
+  rows.sort(function(a,b){return a.e.date<b.e.date?1:a.e.date>b.e.date?-1:(b.e.ts||0)-(a.e.ts||0)});
+  if(!rows.length){out.innerHTML='<p class="sub" style="margin:4px 0 0">No matches.</p>';return}
+  var lab={in:'Got in',rej:'Rejected',ns:'Not show',stolen:'Stolen',notally:'Not tally',pend:'Pending'},h='<p class="sub" style="margin:0 0 4px">'+plural(rows.length,'match','matches')+'</p><ul style="list-style:none;margin:0;padding:0">';
+  rows.slice(0,40).forEach(function(r){
+    var e=r.e,c=club(e.clubId),n=heads(e);
+    h+='<li><button type="button" data-go="'+esc(e.date+'|'+e.clubId)+'" style="all:unset;box-sizing:border-box;display:block;width:100%;padding:9px 0;border-top:1px solid var(--grid);cursor:pointer">'
+      +'<b>'+esc(e.name)+'</b>'+(n>1?' ×'+n:'')+(e.type==='mesa'?' ⭐':'')
+      +'<small style="display:block;color:var(--ink2)">'+esc(fmtLong(e.date))+' · '+esc(c?c.name:'Unknown venue')+' · '+lab[statusOf(e)]+'</small>'
+      +(r.hit?'<small style="display:block;color:var(--ink2)">“'+esc(r.hit.length>80?r.hit.slice(0,80)+'…':r.hit)+'”</small>':'')
+      +'</button></li>';
+  });
+  if(rows.length>40)h+='<li class="sub" style="padding-top:8px">Showing the 40 most recent. Type more to narrow down.</li>';
+  out.innerHTML=h+'</ul>';
+}
 function bindDash(){
+  $('#gsearch').addEventListener('input',renderSearch);
+  $('#gsearchOut').addEventListener('click',function(ev){var go=ev.target.closest('[data-go]');if(go)goList(go.dataset.go)});
   $('#periodChips').addEventListener('click',function(ev){
     var b=ev.target.closest('.chip');if(!b)return;
     DV.period=b.dataset.p;DV.off=0;

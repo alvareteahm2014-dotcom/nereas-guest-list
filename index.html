@@ -36,6 +36,10 @@ body{margin:0}
   <main>
     <!-- TAB 1: DASHBOARD -->
     <section id="view-dash" class="stack" role="tabpanel" aria-labelledby="tab-dash">
+      <div class="card stack" style="gap:8px">
+        <label class="f" for="gsearch">Search guests<input class="in" id="gsearch" type="search" placeholder="Name, notes or Instagram" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"></label>
+        <div id="gsearchOut" aria-live="polite"></div>
+      </div>
       <button class="btn" id="btnInvoice" type="button" style="width:100%">🧾 Create invoice</button>
       <div class="card stack" style="gap:12px">
         <div class="chips" id="periodChips" role="group" aria-label="Period">
